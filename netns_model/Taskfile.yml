@@ -1,0 +1,194 @@
+# https://taskfile.dev
+version: '3'
+
+vars:
+  NETMEAS: netmeas
+  NETMEAS_PLOT: ../netmeas_plot.py
+  RESULTS: results
+
+tasks:
+  setup:
+    - sudo POP='{{.POP}}' QDISC='{{.QDISC}}' bash ./netns_model.sh setup
+
+  teardown:
+    - sudo bash ./netns_model.sh teardown
+
+  netmeas-plot:
+    requires:
+      vars: [NAME]
+    vars:
+      QUEUE: '{{if .NOT_QUEUE}}{{else}}--queue "{{.NAME}}.queue.csv"{{end}}'
+    dir: '{{.RESULTS}}'
+    cmds:
+      - python3 '{{.NETMEAS_PLOT}}' '{{.NAME}}.csv' {{.QUEUE}} -o "{{.NAME}}.pdf"
+
+  netmeas-server:
+    dir: '{{.RESULTS}}'
+    cmds:
+      - sudo nice '-10' ip netns exec h2 sudo -u $USER timeout 6 '{{.NETMEAS}}' server >/dev/null 2>&1 </dev/null &
+
+  monitor-queue:
+    help: |
+      "Handle: 10000 dishy_ul, 20000 sat_dl, 30000 pop_dl"
+    requires:
+      vars: [LOG, HANDLE]
+    vars:
+    cmds:
+      - sudo timeout 6 bash queue.sh '{{.HANDLE}}' > '{{.RESULTS}}/{{.LOG}}' &
+
+  tcpdump:*:
+    vars:
+      NETNS: '{{index .MATCH 0}}'
+    dir: '{{.RESULTS}}'
+    cmds:
+      - sudo ip netns exec '{{.NETNS}}' tcpdump -i any -s 100 -w '{{.NETNS}}.pcap' -G 6 -W 1 &
+
+  # ---
+  all:
+    - task: drop-all
+    - task: pop-all
+    - task: tcp-all
+
+  # --- Compare head-drop and tail-drop ---
+
+  drop-all:
+    - task: head-drop-ul
+    - task: head-drop-dl
+    - task: tail-drop-ul
+    - task: tail-drop-dl
+
+  where-drop:
+    internal: true
+    requires:
+      vars: [NAME, QDISC, DIRECTION, RATE, HANDLE]
+    vars:
+      DURATION: '{{.DURATION | default "1000"}}'
+    dir: '{{.RESULTS}}'
+    cmds:
+      - task: setup
+        vars: { QDISC: '{{.QDISC}}' }
+      - task: monitor-queue
+        vars: { LOG: '{{.NAME}}.queue.csv', HANDLE: '{{.HANDLE}}' }
+      - task: netmeas-server
+      - sleep 1
+      - sudo ip netns exec h1 nice '-10' sudo -u $USER '{{.NETMEAS}}' udp-rate --ip 10.0.3.2 --rate='{{.RATE}}' --duration='{{.DURATION}}' --direction='{{.DIRECTION}}' --out='{{.NAME}}.csv'
+      - task: netmeas-plot
+        vars: { NAME: '{{.NAME}}' }
+  head-drop-ul:
+    - task: where-drop
+      vars: { NAME: 'head-drop-ul', QDISC: 'pfifo_head_drop', DIRECTION: 'ul', RATE: 200, HANDLE: '10000' }
+  head-drop-dl:
+    - task: where-drop
+      vars: { NAME: 'head-drop-dl', QDISC: 'pfifo_head_drop', DIRECTION: 'dl', RATE: 700, HANDLE: '20000'  }
+  tail-drop-ul:
+    - task: where-drop
+      vars: { NAME: 'tail-drop-ul', QDISC: 'pfifo', DIRECTION: 'ul', RATE: 200, HANDLE: '10000' }
+  tail-drop-dl:
+    - task: where-drop
+      vars: { NAME: 'tail-drop-dl', QDISC: 'pfifo', DIRECTION: 'dl', RATE: 700, HANDLE: '20000' }
+
+  # Investigate behaviors of AQMs
+  fqcodel-ul:
+    - task: where-drop
+      vars: { NAME: 'fqcodel-ul', QDISC: 'fq_codel limit 4000 target 10ms interval 25ms drop_batch 1024', DIRECTION: 'ul', RATE: 70, HANDLE: '10000', DURATION: 3000 }
+  red-ul:
+    - task: where-drop
+      vars: { NAME: 'red-ul', QDISC: 'red limit 6000000 avpkt 500 probability 0.8 min 15000 max 45000 adaptive', DIRECTION: 'ul', RATE: 70, HANDLE: '10000', DURATION: 3000 }
+
+  # --- Model PoP behavior with very high DL rates ---
+  pop-all:
+    - task: pop-700
+    - task: pop-600
+
+  pop-task:
+    internal: true
+    requires:
+      vars: [NAME, RATE]
+    dir: '{{.RESULTS}}'
+    cmds:
+      - task: setup
+        vars: { QDISC: 'pfifo_head_drop', POP: 'true' }
+      - task: monitor-queue
+        vars: { LOG: '{{.NAME}}.queue.csv', HANDLE: '30000' }
+      - task: netmeas-server
+      - sleep 1
+      - sudo ip netns exec h1 '{{.NETMEAS}}' udp-rate --ip 10.0.3.2 --rate='{{.RATE}}' --duration=3000 --direction='dl' --out='{{.NAME}}.csv'
+      - task: netmeas-plot
+        vars: { NAME: '{{.NAME}}' }
+
+  pop-700:
+    - task: pop-task
+      vars: { NAME: 'pop-700', RATE: 700 }
+  pop-600:
+    - task: pop-task
+      vars: { NAME: 'pop-600', RATE: 600 }
+
+
+  # --- TCP Measurements for queue simulation validation ---
+  tcp-all:
+    - task: tcp-cubic
+    - task: tcp-bbr
+
+  tcp-task:
+    internal: true
+    requires:
+      vars: [NAME, DIRECTION, CCA]
+    vars:
+
+    dir: '{{.RESULTS}}'
+    cmds:
+      - task: setup
+        vars: { QDISC: 'pfifo_head_drop', POP: 'false' }
+      - task: monitor-queue
+        vars: { LOG: '{{.NAME}}.queue.csv', HANDLE: '20000' } # TODO: downlink specific
+      - task: netmeas-server
+      - task: tcpdump:h1
+      - task: tcpdump:h2
+      - sleep 1
+      - sudo ip netns exec h1 '{{.NETMEAS}}' tcp --ip 10.0.3.2 --duration=3000 --direction='{{.DIRECTION}}' --cca='{{.CCA}}' --out='{{.NAME}}.csv' | tee tmp.stdout
+      # TODO: assumes downlink test
+      - pcap-match h2.pcap h1.pcap --name "{{.NAME}}-match" --tcp-src "$(grep sendTCP tmp.stdout | grep DL | cut -f 4 | cut -d ':' -f 2)"
+      - uv run '{{.NETMEAS_PLOT}}' '{{.NAME}}'-match*.csv --queue '{{.NAME}}.queue.csv' -o "{{.NAME}}.pdf"
+
+  tcp-cubic:
+    - task: tcp-task
+      vars: { NAME: 'tcp-cubic-dl', DIRECTION: dl, CCA: cubic }
+  tcp-bbr:
+    - task: tcp-task
+      vars: { NAME: 'tcp-bbr-dl', DIRECTION: dl, CCA: bbr1 }
+
+
+
+  # --- Fair Queueing investigation ---
+  fq-task:
+    internal: true
+    requires:
+      vars: [NAME, DIRECTION, ELEPH_RATE, MOUSE_RATE]
+    vars:
+    dir: '{{.RESULTS}}'
+    cmds:
+      - task: setup
+        # vars: { QDISC: 'sfq headdrop', POP: 'false' } # chaneg for UL
+        vars: { QDISC: 'fq_codel target 5s interval 5s', POP: 'false' }
+      - task: monitor-queue
+        vars: { LOG: '{{.NAME}}_a.queue.csv', HANDLE: '20000' }
+      - task: monitor-queue
+        vars: { LOG: '{{.NAME}}_b.queue.csv', HANDLE: '20000' }
+      - task: netmeas-server
+      - task: tcpdump:h1
+      - task: tcpdump:h2
+      - sleep 1
+      - sudo ip netns exec h1 '{{.NETMEAS}}' udp-rate --ip 10.0.3.2 --rate='{{.ELEPH_RATE}}' --duration=3000 --direction='{{.DIRECTION}}' --out='{{.NAME}}_a.csv' &
+      - sudo ip netns exec h1 '{{.NETMEAS}}' udp-rate --ip 10.0.3.2 --rate='{{.MOUSE_RATE}}' --duration=3000 --direction='{{.DIRECTION}}' --out='{{.NAME}}_b.csv'
+      - task: netmeas-plot
+        vars: { NAME: '{{.NAME}}_a', NOT_QUEUE: true }
+      - task: netmeas-plot
+        vars: { NAME: '{{.NAME}}_b', NOT_QUEUE: true }
+
+  fq:
+    - task: fq-task
+      vars: { NAME: 'fq-ul', DIRECTION: ul, ELEPH_RATE: 70, MOUSE_RATE: 30 }
+
+  fq-dl:
+    - task: fq-task
+      vars: { NAME: 'fq-dl', DIRECTION: dl, ELEPH_RATE: 700, MOUSE_RATE: 30 }

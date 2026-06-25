@@ -1,0 +1,257 @@
+version: '3'
+
+requires:
+  vars:
+    - DATASET # The path to the dataset available at https://doi.org/10.14459/2026mp1856124
+    - RESULTS # Results (plots, etc.) are written to this folder
+dotenv: [.env]
+
+tasks:
+  # --- Python utilities ---
+  check-vars:
+    internal: true
+    requires:
+      vars: [DATASET, RESULTS]
+    preconditions:
+      - sh: test -d '{{.DATASET}}'
+        msg: 'DATASET folder "{{.DATASET}}" does not exist'
+    cmds:
+      - mkdir -p '{{.RESULTS}}'
+    silent: true
+
+  freeze-py-deps:
+      desc: "Generate a standard human-readable requirements.txt"
+      cmds:
+        - |
+          python -c "
+          import matplotlib, pandas, scipy, tqdm
+          print(f'matplotlib=={matplotlib.__version__}')
+          print(f'pandas=={pandas.__version__}')
+          print(f'scipy=={scipy.__version__}')
+          print(f'tqdm=={tqdm.__version__}')
+          " > requirements.txt
+      silent: true
+
+  # --- Counting data ---
+  count-csvs:
+    cmds:
+      - |
+        for DIR in '{{.DATASET}}'/*; do
+          if [ -d "$DIR" ]; then
+            printf "$(find "$DIR/" -name '*csv'  | wc -l)\t${DIR}\n";
+          fi;
+        done
+
+  count-experiments:
+    cmds:
+      - |
+        for DIR in '{{.DATASET}}'/*; do
+          if [ -d "$DIR" ]; then
+            printf "$(find "$DIR/" -name '*csv'  | wc -l)\t${DIR}\n";
+            find "$DIR/" -iname '*csv' -execdir basename "{}" \; | sort | uniq -c
+            echo ""
+          fi;
+        done | tee '{{.RESULTS}}/count-experiments.txt'
+
+  # --- Figures ---
+
+  sync:
+    cmds:
+      - rsync -Pr --copy-links * .* --exclude .venv --exclude .git --exclude *pdf --exclude .mypy_cache testbed-02:trace/git
+      - rsync -P testbed-02:trace/git-results/*{pdf,txt} ../git-results/
+
+  # Confirmed to work but computing CIs takes 4 min
+  fig-02:
+    desc: "Generate Figure 2."
+    cmds:
+      - task: check-vars
+      # headdrop.pickle is needed by netns-drop figure
+      - python3 figures/fig-02-headdrop.py '{{.DATASET}}'/multidurrate_1s/*multidurrate*/rate_{dl_500,ul_140}_1000.csv --pickle '{{.RESULTS}}/headdrop.pickle' -o '{{.RESULTS}}/fig-02.pdf'
+
+  # TODO remove invalid burst sizes from the dataset?
+  # TODO: output ist wrong!
+  fig-03:
+    desc: "Generate Figure 3."
+    cmds:
+      - task: check-vars
+      - python3 figures/fig-03-bursts.py '{{.DATASET}}'/burst/*burst_{dl,ul}/burst_*_*_*.csv -o '{{.RESULTS}}/fig-03-bursts.pdf'
+
+  fig-04:
+    desc: "Generate Figure 4."
+    # TODO: this should also work with self-measured data from the netns experiment scripts
+    cmds:
+      - task: check-vars
+      - python3 figures/netns-drop.py '{{.DATASET}}'/netns/{head-drop-ul,tail-drop-ul,head-drop-dl,tail-drop-dl}.csv '{{.RESULTS}}/headdrop.pickle' -o '{{.RESULTS}}/fig-04.pdf'
+    preconditions:
+      - sh: test -f '{{.RESULTS}}/headdrop.pickle'
+        msg: 'fig-04 depends on headdrop.pickle that is produced by fig-02: run task fig-02 first'
+
+  # Confirmed to work
+  fig-05:
+    desc: "Generate Figure 5."
+    cmds:
+      - task: check-vars
+      - python3 figures/fig-05-08-rampup.py  '{{.DATASET}}'/multidurrate_4s/*/rate_*{050,100,dl_200,300,400,dl_500,015,030,050,070,090,140}_*.csv -o '{{.RESULTS}}/fig-05-rampup.pdf'
+
+  # Confirmed to work
+  fig-06:
+    desc: "Generate Figure 6."
+    # TODO: Refactor? Remove non-sf functionality?
+    cmds:
+      - task: check-vars
+      - python3 figures/fig-06-cooldown.py sf '{{.DATASET}}'/cooldown_highrate/*/rate*csv -o '{{.RESULTS}}/fig-06-cooldown.pdf'
+
+  # Confirmed to work
+  fig-16:
+    desc: "Generate Figure 16."
+    # TODO: Refactor? Remove non-sf functionality?
+    cmds:
+      - task: check-vars
+      - python3 figures/fig-06-cooldown.py sf '{{.DATASET}}'/cooldown_lowrate/*/rate*csv -o '{{.RESULTS}}/fig-16-cooldown.pdf'
+
+  fig-07-14:
+    desc: "Generate Figure 7."
+    # TODO: needs loss_input.parquet from aqm-input.py (formerly aqm/loss_input.py)
+    cmds:
+      - task: check-vars
+      - python3 figures/fig-07-14-aqm.py '{{.RESULTS}}'/loss_input.parquet -o '{{.RESULTS}}/fig-07-14-aqm.pdf'
+
+  aqm-input:
+    desc: "Generate data for fig-07-aqm"
+    cmds:
+      - task: check-vars
+      - python3 figures/aqm-input.py '{{.RESULTS}}'/loss_input.parquet -o '{{.RESULTS}}/fig-07-aqm.pdf'
+
+      # TODO: find relevant data: new location
+        # EXTRA_ARGS: "/u/home/cech/trace/vm/220251209_tcpri/*tcpri*/tcp*packets.csv"
+        # # INPUT_GLOB: "trace/results/20251126_multidurrate/*/rate_{dl,ul}_*_4000.csv"
+        # INPUT_GLOB: "trace/results/202602_multidurrate/*/rate_{dl,ul}_*_4000.csv"
+    
+  # Confirmed to work
+  fig-08:
+    desc: "Generate Figure 8."
+    cmds:
+      - task: check-vars
+      - python3 figures/fig-05-08-rampup.py  '{{.DATASET}}'/multidurrate_4s/*/rate_dl_{500,600,700}_*.csv -o '{{.RESULTS}}/fig-08-rampup-outlier.pdf'
+
+  # Confirmed to work
+  fig-09-rateri:
+    desc: "Generate Figure 9 (rateri)."
+    cmds:
+      - task: check-vars
+      - python3 figures/fig-09-rateri.py --sats '{{.DATASET}}/tle_2026-02-02.csv' -o '{{.RESULTS}}/fig-09-rateri.pdf' -- '{{.DATASET}}'/rate/*/rate_{ul,dl}.csv
+
+  # Confirmed to work
+  fig-09-rate:
+    desc: "Generate Figure 9 (rate)."
+    cmds:
+      - task: check-vars
+      - python3 figures/fig-09-rate.py --sats '{{.DATASET}}/tle_2026-02-02.csv' -o '{{.RESULTS}}/fig-09-rate.pdf' -- '{{.DATASET}}'/rate/*/rate_{ul,dl}.csv
+
+  # Confirmed to work
+  fig-10-15:
+    desc: "Generate Figure 10 and 15."
+    cmds:
+      - task: check-vars
+      - python3 figures/fig-10-15-mouseeleph.py '{{.DATASET}}'/{mouseeleph_ul,mouseeleph_dl_250}/*/*csv -o '{{.RESULTS}}/fig-10-15-mouseeleph.pdf'
+
+  fig-11:
+    desc: "Generate Figure 11."
+    # TODO: copy the relevant data to DATASET
+    # the data needs to be processed (packets.csv)
+    # TODO change import to tcpri
+    cmds:
+      - task: check-vars
+      - python3 figures/fig11-tcpss.py '{{.DATASET}}'/{{.Ttcp}}/*/tcp_{dl,ul}_*_12000.csv -o '{{.RESULTS}}/fig11-tcpss.pdf'
+
+  fig12:
+    desc: "Generate Figure 12."
+    # TODO: copy the relevant data to DATASET
+    cmds:
+      - task: check-vars
+      - python3 figures/fig-12-tcpri.py '{{.DATASET}}'/{{.Ttcp}}/*/{tcp,udp}_{dl,ul}_*_12000.csv -o '{{.RESULTS}}/fig-12-tcpri.pdf'
+
+  # Confirmed to work
+  fig-13:
+    desc: "Generate Figure 13."
+    cmds:
+      - task: check-vars
+      - python3 figures/fig-13-switchflow.py '{{.DATASET}}'/switchflow/*/rate_{ul,dl}_{0200,0300,0700,0020,0040,0070}_*.csv -o '{{.RESULTS}}/fig-13-switchflow.pdf'
+
+  # TODO: data is different from the paper!
+  fig-17:
+    desc: "Generate Figure 17."
+    cmds:
+      - task: check-vars
+      - python3 figures/fig-17-owd.py --sats '{{.DATASET}}/tle_2026-01-11.csv' -o '{{.RESULTS}}/fig-17-owd-udp.pdf' -- '{{.DATASET}}'/owd/*/owd-udp_{ul,dl}.csv
+
+  # TODO: compare output with paper
+  # not in the paper or is it?
+  # fig-18-rate:
+  #   desc: "Generate Figure 18 (rate)."
+  #   cmds:
+  #     - task: check-vars
+  #     - python3 figures/fig-18-loss.py -o '{{.RESULTS}}/fig-18-loss-rate.pdf' -- '{{.DATASET}}'/rate/*/rate_{ul,dl}.csv
+
+  # TODO: compare output with paper
+  fig-18-idle:
+    desc: "Generate Figure 18 (idle)."
+    cmds:
+      - task: check-vars
+      - python3 figures/fig-18-loss.py -o '{{.RESULTS}}/fig-18-loss-idle.pdf' -- '{{.DATASET}}'/owd/*/owd-udp_{ul,dl}.csv
+
+
+
+
+  # --- Data from other nodes ---
+  # VICtoria: ~/ceph_leoscope/vic
+  # bursts: 120
+  # mouseeleph: 240
+  # cdsf: 960
+  # rate: 78
+
+  # Confirmed to work
+  fig-10-15-vic:
+    desc: "Generate Figure 10 and 15."
+    cmds:
+      - task: check-vars
+      - python3 figures/fig-10-15-mouseeleph.py '{{.DATASET}}'/vic/*mouseeleph*/*csv -o '{{.RESULTS}}/fig-10-15-mouseeleph-vic.pdf'
+
+  # Broken: KeyError: 'ho' jlines 269 -> 209 -> 77
+  fig-09-rateri-vic:
+    desc: "Generate Figure 9 (rateri)."
+    cmds:
+      - task: check-vars
+      - python3 figures/fig-09-rateri.py -o '{{.RESULTS}}/fig-09-rateri-vic.pdf' -- '{{.DATASET}}'/vic/*_rate_*/rate_{ul,dl}.csv
+
+  # Confirmed to work
+  fig-09-rate-vic:
+    desc: "Generate Figure 9 (rate)."
+    cmds:
+      - task: check-vars
+      - python3 figures/fig-09-rate.py -o '{{.RESULTS}}/fig-09-rate-vic.pdf' -- '{{.DATASET}}'/vic/*_rate_*/rate_{ul,dl}.csv
+
+  # TODO: could also look at AQM
+
+  # TODO: figure is collapsed; why?
+  fig-03-vic:
+    desc: "Generate Figure 3."
+    cmds:
+      - task: check-vars
+      - python3 figures/fig-03-bursts.py '{{.DATASET}}'/vic/*burst_{dl,ul}/burst_*_*_*.csv -o '{{.RESULTS}}/fig-03-bursts-vic.pdf'
+
+  # Confirmed to work
+  fig-06-vic:
+    desc: "Generate Figure 6."
+    # TODO: Refactor? Remove non-sf functionality?
+    cmds:
+      - task: check-vars
+      - python3 figures/fig-06-cooldown.py sf '{{.DATASET}}'/vic/*cdsf*/rate*csv -o '{{.RESULTS}}/fig-06-cooldown-vic.pdf'
+
+  # --- TUD: ~/ceph_leoscope/tud
+  # burst: 126
+  # multidurrate: 202
+
+
+  # --- star-victoria-node
+  # owd: 71 from 2025-06
