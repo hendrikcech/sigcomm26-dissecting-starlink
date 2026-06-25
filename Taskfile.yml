@@ -57,7 +57,7 @@ tasks:
 
   sync:
     cmds:
-      - rsync -Pr --copy-links * .* --exclude .venv --exclude .git --exclude *pdf --exclude .mypy_cache testbed-02:trace/git
+      - rsync -Pr --copy-links * .* --exclude .venv --exclude *pdf --exclude .mypy_cache testbed-02:trace/git
       - rsync -P testbed-02:trace/git-results/*{pdf,txt} ../git-results/
 
   # Confirmed to work but computing CIs takes 4 min
@@ -148,12 +148,18 @@ tasks:
       - task: check-vars
       - python3 figures/fig-09-rate.py --sats '{{.DATASET}}/tle_2026-02-02.csv' -o '{{.RESULTS}}/fig-09-rate.pdf' -- '{{.DATASET}}'/rate/*/rate_{ul,dl}.csv
 
-  # Confirmed to work
+  # Confirmed to work: check again
   fig-10-15:
     desc: "Generate Figure 10 and 15."
     cmds:
       - task: check-vars
-      - python3 figures/fig-10-15-mouseeleph.py '{{.DATASET}}'/{mouseeleph_ul,mouseeleph_dl_250}/*/*csv -o '{{.RESULTS}}/fig-10-15-mouseeleph.pdf'
+      - python3 figures/fig-10-15-mouseeleph.py plot '{{.DATASET}}'/{mouseeleph_ul,mouseeleph_dl_250}/*/*csv -o '{{.RESULTS}}/fig-10-15-mouseeleph.pdf'
+
+  fig-10-15-stat:
+    desc: "Run significance tests."
+    cmds:
+      - task: check-vars
+      - python3 figures/fig-10-15-mouseeleph.py stat '{{.DATASET}}'/{mouseeleph_ul,mouseeleph_dl_250}/*/*csv  | tee '{{.RESULTS}}/fig-10-15-stat.txt'
 
   fig-11:
     desc: "Generate Figure 11."

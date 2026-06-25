@@ -6,6 +6,7 @@
 #     "matplotlib",
 #     "numpy",
 #     "pandas",
+#     "scipy",
 #     "tqdm",
 # ]
 # ///
@@ -245,16 +246,9 @@ def plot_scatter(grp, df, direction, metric, ylabel):
 
     return fig
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("csvs", nargs="+", help="csvs")
-    parser.add_argument("-b", action="store_true")
-    parser.add_argument("-n", type=int)
-    parser.add_argument("-o")
-    args = parser.parse_args()
 
-    utils.set_plt_style(2)
-
+def build_dataframe(args):
+    """Parse CSV files and build the per-run DataFrame."""
     files = [f for f in [parse_filename(csv) for csv in sorted(args.csvs)] if f is not None]
     grps_all = [[e for e in g] for (k, g) in itertools.groupby(files, key=lambda f: f["key"])]
     paths = [g for g in grps_all if len(g) == 2]
@@ -265,10 +259,13 @@ def main():
 
     rows = utils.parse_csvs(paths, parse_csvs, parallel=True, concat=False, sample=args.n)
     df = pd.DataFrame(rows, columns=columns)
-    # with multiprocessing.Pool(multiprocessing.cpu_count()) as pool:
-    #     rows = list(tqdm(pool.imap_unordered(parse_csvs, paths), total=len(paths), desc="Parsing csvs"))
-    #     df = pd.DataFrame(rows, columns=columns)
+    return df
 
+
+def cmd_plot(args):
+    """Generate MouseElephant figures (original plotting logic)."""
+    utils.set_plt_style(2)
+    df = build_dataframe(args)
 
     grp = df.groupby(["direction", "rate_eleph", "rate_mouse"]).agg(["mean", "std", "median", "count"])
     df["fair"] = ((df.gput_eleph + df.gput_mouse) / 2 >= df.rate_mouse).astype("category") # is the mouse rate within its fair share?
@@ -335,6 +332,97 @@ def main():
                 pdf.savefig(fig, bbox_inches="tight", pad_inches=0)
     else:
         plt.show()
+
+
+def cmd_stat(args):
+    """Run paired Wilcoxon signed-rank tests on mouse vs elephant loss rates."""
+    from scipy.stats import wilcoxon
+
+    df = build_dataframe(args)
+
+    for direction in ["dl", "ul"]:
+        d = df[df.direction == direction]
+
+        print(f"{'=' * 60}")
+        if direction == "dl":
+            print(f"DL Loss Coupling")
+            print(f"  Claim: mouse and elephant experience nearly identical loss")
+        else:
+            print(f"UL Flow Isolation")
+            print(f"  Claim: losses are NOT coupled across flows on the UL")
+        print(f"  Test: Paired Wilcoxon signed-rank (two-sided)")
+        print(f"  n = {len(d)} paired runs")
+        print()
+
+        # --- Aggregate Wilcoxon test across all rates ---
+        res = wilcoxon(d["loss_eleph"], d["loss_mouse"], alternative="two-sided")
+        n = len(d)
+        r = 1 - (2 * res.statistic) / (n * (n + 1) / 2) # effect size: rank-biserial correlation
+
+        print(f"  Aggregate (all rates):")
+        print(f"    Wilcoxon W = {res.statistic:.1f}")
+        print(f"    p = {res.pvalue:.4g}")
+        print(f"    rank-biserial r = {r:+.4f}")
+        print()
+
+        # --- TOST equivalence test for DL ---
+        if direction == "dl":
+            delta = 2  # equivalence margin in percentage points
+            diffs = d["loss_eleph"].values - d["loss_mouse"].values
+            _, p_upper = wilcoxon(diffs - delta, alternative="less")
+            _, p_lower = wilcoxon(diffs + delta, alternative="greater")
+            p_tost = max(p_upper, p_lower)
+            print(f"  TOST equivalence test (Δ = ±{delta} pp):")
+            print(f"    p_upper = {p_upper:.4g}  (H₀: diff ≥ +Δ)")
+            print(f"    p_lower = {p_lower:.4g}  (H₀: diff ≤ −Δ)")
+            print(f"    p_TOST  = {p_tost:.4g}")
+            if p_tost < 0.05:
+                print(f"    → Equivalence established at α=0.05")
+            else:
+                print(f"    → Equivalence NOT established")
+            print()
+
+        # --- Per-rate breakdown ---
+        print(f"  Per mouse-rate breakdown:")
+        print(f"    {'rate':>5s}  {'n':>4s}  {'W':>10s}  {'p':>10s}  {'r':>8s}  {'sig':>3s}   {'mean_e':>7s}  {'mean_m':>7s}")
+        for rate, grp in d.groupby("rate_mouse"):
+            me = grp["loss_eleph"].mean()
+            mm = grp["loss_mouse"].mean()
+            if len(grp) < 5:
+                print(f"    {rate:5.0f}  {len(grp):4d}  {'(too few)':>10s}  {'':>10s}  {'':>8s}  {'':>3s}   {me:7.2f}  {mm:7.2f}")
+                continue
+            try:
+                res_r = wilcoxon(grp["loss_eleph"], grp["loss_mouse"], alternative="two-sided")
+                n_r = len(grp)
+                r_r = 1 - (2 * res_r.statistic) / (n_r * (n_r + 1) / 2)
+                sig = "***" if res_r.pvalue < 0.001 else "**" if res_r.pvalue < 0.01 else "*" if res_r.pvalue < 0.05 else "ns"
+                print(f"    {rate:5.0f}  {n_r:4d}  {res_r.statistic:10.1f}  {res_r.pvalue:10.4g}  {r_r:+8.4f}  {sig:>3s}   {me:7.2f}  {mm:7.2f}")
+            except ValueError as e:
+                print(f"    {rate:5.0f}  {len(grp):4d}  skipped ({e})")
+        print()
+
+
+def main():
+    parent_parser = argparse.ArgumentParser(add_help=False)
+    parent_parser.add_argument("csvs", nargs="+", help="csvs")
+    parent_parser.add_argument("-n", type=int, help="sample N runs (for quick testing)")
+
+    parser = argparse.ArgumentParser(description="MouseElephant analysis")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    plot_parser = subparsers.add_parser("plot", parents=[parent_parser], help="Generate MouseElephant figures")
+    plot_parser.add_argument("-b", action="store_true", help="drop into debugger")
+    plot_parser.add_argument("-o", help="output PDF path")
+
+    subparsers.add_parser("stat", parents=[parent_parser], help="Run Wilcoxon signed-rank tests")
+
+    args = parser.parse_args()
+
+    if args.command == "plot":
+        cmd_plot(args)
+    elif args.command == "stat":
+        cmd_stat(args)
+
 
 if __name__ == "__main__":
     main()
