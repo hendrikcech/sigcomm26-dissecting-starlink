@@ -23,7 +23,10 @@ from matplotlib.backends.backend_pdf import PdfPages
 from tqdm import tqdm
 
 import utils
-import tcpri
+
+import importlib
+tcpri = importlib.import_module("fig-12-tcpri")
+
 
 grp_freq_ms = 100
 metric = "SenderWindowSegs"

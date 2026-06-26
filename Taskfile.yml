@@ -161,6 +161,7 @@ tasks:
       - task: check-vars
       - python3 figures/fig-10-15-mouseeleph.py stat '{{.DATASET}}'/{mouseeleph_ul,mouseeleph_dl_250}/*/*csv  | tee '{{.RESULTS}}/fig-10-15-stat.txt'
 
+  # TODO: works but plot again and compare with paper figure
   fig-11:
     desc: "Generate Figure 11."
     # TODO: copy the relevant data to DATASET
@@ -168,14 +169,22 @@ tasks:
     # TODO change import to tcpri
     cmds:
       - task: check-vars
-      - python3 figures/fig11-tcpss.py '{{.DATASET}}'/{{.Ttcp}}/*/tcp_{dl,ul}_*_12000.csv -o '{{.RESULTS}}/fig11-tcpss.pdf'
+      - python3 figures/fig-11-tcpss.py '{{.DATASET}}'/tcp/*/tcp_{dl,ul}_*_12000.csv -o '{{.RESULTS}}/fig-11-tcpss.pdf'
 
-  fig12:
+  # TODO: works but plot again and compare with paper figure
+  fig-12:
     desc: "Generate Figure 12."
     # TODO: copy the relevant data to DATASET
     cmds:
       - task: check-vars
-      - python3 figures/fig-12-tcpri.py '{{.DATASET}}'/{{.Ttcp}}/*/{tcp,udp}_{dl,ul}_*_12000.csv -o '{{.RESULTS}}/fig-12-tcpri.pdf'
+      - python3 figures/fig-12-tcpri.py '{{.DATASET}}'/tcp/*/{tcp,udp}_{dl,ul}_*_12000.csv -o '{{.RESULTS}}/fig-12-tcpri.pdf'
+
+  tcp-stat:
+    desc: "Run TCP significance tests"
+    cmds:
+      - task: check-vars
+      - python3 figures/tcp-stat.py '{{.DATASET}}'/tcp/*/{tcp,udp}_{dl,ul}_*_12000.csv -o '{{.RESULTS}}/tcp-stat.txt' -p '{{.RESULTS}}/tcp-stat.pdf'
+    
 
   # Confirmed to work
   fig-13:
