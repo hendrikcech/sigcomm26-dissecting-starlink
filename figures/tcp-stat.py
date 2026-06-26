@@ -204,104 +204,177 @@ def pairwise_mannwhitney(gput_per_run, direction, phase):
 # CCA display order: model-based first, then loss-based
 CCA_ORDER = ["BBRv1", "LeoCC", "SatPipe", "BBRv3", "Illinois", "CUBIC", "HyStart", "HyStart++", "SEARCH", "SUSS"]
 
-def plot_heatmap(result_df, phase):
+# Continuous colormap: blue (A < B) — white (equal) — red (A > B)
+HEATMAP_CMAP = plt.cm.RdBu_r
+HEATMAP_NORM = mcolors.TwoSlopeNorm(vmin=-1, vcenter=0, vmax=1)
+
+# Discrete colors: one color per magnitude category × sign
+# Ordered: large-neg, medium-neg, small-neg, negligible, small-pos, medium-pos, large-pos
+DISCRETE_COLORS = {
+    ("large",    -1): "#2166ac",   # dark blue
+    ("medium",   -1): "#67a9cf",   # medium blue
+    ("small",    -1): "#d1e5f0",   # light blue
+    ("negligible", 0): "#f0f0f0",  # near-white gray
+    ("small",    +1): "#fddbc7",   # light red
+    ("medium",   +1): "#ef8a62",   # medium red
+    ("large",    +1): "#b2182b",   # dark red
+}
+
+def _discrete_cell_color(d):
+    """Return face color for Cliff's delta value *d* using discrete categories."""
+    mag = cliffs_delta_magnitude(d)
+    if mag == "negligible":
+        return DISCRETE_COLORS[("negligible", 0)]
+    sign = +1 if d > 0 else -1
+    return DISCRETE_COLORS[(mag, sign)]
+
+
+def _fill_heatmap_ax(ax, dir_data, ccas, n, show_delta=False, discrete=True):
+    """Render one heatmap sub-plot onto *ax*."""
+    cmap, norm = HEATMAP_CMAP, HEATMAP_NORM
+
+    # Build matrices
+    delta_matrix = np.full((n, n), np.nan)
+    p_matrix = np.ones((n, n))
+
+    for _, row in dir_data.iterrows():
+        i = ccas.index(row["cca_a"]) if row["cca_a"] in ccas else None
+        j = ccas.index(row["cca_b"]) if row["cca_b"] in ccas else None
+        if i is None or j is None:
+            continue
+        delta_matrix[i, j] = row["cliffs_delta"]
+        delta_matrix[j, i] = -row["cliffs_delta"]
+        p_matrix[i, j] = row["p"]
+        p_matrix[j, i] = row["p"]
+
+    # Draw cells
+    for i in range(n):
+        for j in range(n):
+            if i == j or np.isnan(delta_matrix[i, j]):
+                continue
+
+            d = delta_matrix[i, j]
+            p = p_matrix[i, j]
+            color = _discrete_cell_color(d) if discrete else cmap(norm(d))
+
+            ax.add_patch(plt.Rectangle((j, n - 1 - i), 1, 1,
+                                       facecolor=color, edgecolor="white", lw=0.5))
+
+            # Significance annotation
+            if p < 0.05:
+                sig_marker = "*" if p >= 0.01 else ("**" if p >= 0.001 else "***")
+            else:
+                sig_marker = ""  # nothing for n.s.
+
+            if show_delta:
+                text = f"{d:+.2f}\n{sig_marker}" if sig_marker else f"{d:+.2f}"
+            else:
+                text = sig_marker
+
+            if text:
+                text_color = "white" if abs(d) > 0.6 else "black"
+                ax.text(j + 0.5, n - 1 - i + 0.5, text,
+                        ha="center", va="center",
+                        fontsize=5, fontweight="bold", color=text_color)
+
+    # Axis formatting
+    ax.set_xlim(0, n)
+    ax.set_ylim(0, n)
+    ax.set_xticks(np.arange(n) + 0.5)
+    ax.set_xticklabels(ccas, rotation=45, ha="right", fontsize=6)
+    ax.set_yticks(np.arange(n) + 0.5)
+    ax.set_yticklabels(ccas[::-1], fontsize=6)
+    ax.set_aspect("equal")
+    ax.grid(False)
+
+
+def plot_heatmaps_grid(result_df, phases, show_delta=False, discrete=True):
     """
-    Plot a pairwise Cliff's delta heatmap matrix for each direction.
-    Full matrix: color encodes Cliff's delta, text shows value + significance.
-    Returns the figure.
+    All phases × directions on a single compact page.
+    Rows = directions (DL, UL), columns = phases.
+    Returns the main figure and a separate colorbar-only figure.
     """
     directions = sorted(result_df.direction.unique())
-    subset = result_df[result_df.phase == phase]
+    subset = result_df[result_df.phase.isin(phases)]
     if subset.empty:
-        print(f"No data for phase '{phase}', skipping heatmap.")
-        return None
+        return None, None
 
     # Determine CCA order from the data, respecting CCA_ORDER
     all_ccas = set(subset.cca_a) | set(subset.cca_b)
     ccas = [c for c in CCA_ORDER if c in all_ccas]
-    # Append any CCAs not in the predefined order
     ccas += sorted(all_ccas - set(ccas))
     n = len(ccas)
 
-    # Diverging colormap: blue (A < B) — white (equal) — red (A > B)
-    cmap = plt.cm.RdBu_r
-    norm = mcolors.TwoSlopeNorm(vmin=-1, vcenter=0, vmax=1)
+    n_rows = len(directions)
+    n_cols = len(phases)
 
-    fig, axes = plt.subplots(1, len(directions),
-                             figsize=(utils.COLUMN_WIDTH * len(directions) + 0.5,
-                                      utils.COLUMN_WIDTH),
+    cell_size = 0.22  # inches per CCA cell — tune to taste
+    w = cell_size * n * n_cols + 1.2   # extra for y-tick labels
+    h = cell_size * n * n_rows + 0.9   # extra for x-tick labels + titles
+
+    fig, axes = plt.subplots(n_rows, n_cols,
+                             figsize=(w, h),
                              squeeze=False,
                              layout="constrained")
 
-    for ax_idx, direction in enumerate(directions):
-        ax = axes[0, ax_idx]
-        dir_data = subset[subset.direction == direction]
-
-        # Build matrices
-        delta_matrix = np.full((n, n), np.nan)
-        p_matrix = np.ones((n, n))
-
-        for _, row in dir_data.iterrows():
-            i = ccas.index(row["cca_a"]) if row["cca_a"] in ccas else None
-            j = ccas.index(row["cca_b"]) if row["cca_b"] in ccas else None
-            if i is None or j is None:
+    for row_idx, direction in enumerate(directions):
+        for col_idx, phase in enumerate(phases):
+            ax = axes[row_idx, col_idx]
+            dir_phase = subset[(subset.direction == direction) &
+                               (subset.phase == phase)]
+            if dir_phase.empty:
+                ax.set_visible(False)
                 continue
-            delta_matrix[i, j] = row["cliffs_delta"]
-            delta_matrix[j, i] = -row["cliffs_delta"]
-            p_matrix[i, j] = row["p"]
-            p_matrix[j, i] = row["p"]
 
-        # Plot lower triangle as colored cells
-        for i in range(n):
-            for j in range(n):
-                if i == j:
-                    # Diagonal: CCA label
-                    continue
-                if np.isnan(delta_matrix[i, j]):
-                    continue
+            _fill_heatmap_ax(ax, dir_phase, ccas, n, show_delta=show_delta,
+                             discrete=discrete)
 
-                d = delta_matrix[i, j]
-                p = p_matrix[i, j]
-                color = cmap(norm(d))
+            # Title: only on top row
+            if row_idx == 0:
+                ax.set_title(PHASE_LABELS[phase], fontsize=8)
 
-                ax.add_patch(plt.Rectangle((j, n - 1 - i), 1, 1,
-                                           facecolor=color, edgecolor="white", lw=0.5))
+            # Direction label: only on left column
+            if col_idx == 0:
+                ax.set_ylabel(direction.upper(), fontsize=8, fontweight="bold")
+            else:
+                ax.set_yticklabels([])
 
-                # Text: show delta value; star if significant
-                if p < 0.05:
-                    sig_marker = "*" if p >= 0.01 else ("**" if p >= 0.001 else "***")
-                    text = f"{d:+.2f}\n{sig_marker}"
-                else:
-                    text = f"{d:+.2f}\nn.s."
+            # X-tick labels only on bottom row
+            if row_idx < n_rows - 1:
+                ax.set_xticklabels([])
 
-                # Pick text color for readability
-                text_color = "white" if abs(d) > 0.6 else "black"
-                ax.text(j + 0.5, n - 1 - i + 0.5, text,
-                        ha="center", va="center",
-                        fontsize=5.5, color=text_color)
+    # ---- Separate colorbar / legend figure (horizontal) ----
+    if discrete:
+        # Discrete legend: labeled color patches
+        from matplotlib.patches import Patch
+        legend_items = [
+            Patch(facecolor=DISCRETE_COLORS[("large", -1)],    edgecolor="gray", label="Large (−)"),
+            Patch(facecolor=DISCRETE_COLORS[("medium", -1)],   edgecolor="gray", label="Medium (−)"),
+            Patch(facecolor=DISCRETE_COLORS[("small", -1)],    edgecolor="gray", label="Small (−)"),
+            Patch(facecolor=DISCRETE_COLORS[("negligible", 0)],edgecolor="gray", label="Negligible"),
+            Patch(facecolor=DISCRETE_COLORS[("small", +1)],    edgecolor="gray", label="Small (+)"),
+            Patch(facecolor=DISCRETE_COLORS[("medium", +1)],   edgecolor="gray", label="Medium (+)"),
+            Patch(facecolor=DISCRETE_COLORS[("large", +1)],    edgecolor="gray", label="Large (+)"),
+        ]
+        fig_cb = plt.figure(figsize=(utils.COLUMN_WIDTH * 1.2, 0.35))
+        fig_cb.legend(handles=legend_items, loc="center", ncol=len(legend_items),
+                      fontsize=6, handlelength=1.2, handletextpad=0.4,
+                      columnspacing=0.8, frameon=False,
+                      title="Cliff's δ magnitude  (sign: row > col)",
+                      title_fontsize=7)
+    else:
+        fig_cb = plt.figure(figsize=(utils.COLUMN_WIDTH * 0.7, 0.35))
+        sm = plt.cm.ScalarMappable(cmap=HEATMAP_CMAP, norm=HEATMAP_NORM)
+        sm.set_array([])
+        cbar_ax = fig_cb.add_axes([0.05, 0.55, 0.9, 0.35])
+        cbar = fig_cb.colorbar(sm, cax=cbar_ax, orientation="horizontal")
+        cbar.set_label("Cliff's δ  (row > col)", fontsize=7)
+        cbar.ax.tick_params(labelsize=6)
 
-        # Axis formatting
-        ax.set_xlim(0, n)
-        ax.set_ylim(0, n)
-        ax.set_xticks(np.arange(n) + 0.5)
-        ax.set_xticklabels(ccas, rotation=45, ha="right", fontsize=7)
-        ax.set_yticks(np.arange(n) + 0.5)
-        ax.set_yticklabels(ccas[::-1], fontsize=7)
-        ax.set_aspect("equal")
-        ax.set_title(f"{direction.upper()} — Phase: {PHASE_LABELS[phase]}", fontsize=9)
-        ax.grid(False)
-
-    # Colorbar
-    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-    sm.set_array([])
-    cbar = fig.colorbar(sm, ax=axes.ravel().tolist(), shrink=0.6, pad=0.02)
-    cbar.set_label("Cliff's δ  (row > col)", fontsize=8)
-
-    return fig
+    return fig, fig_cb
 
 
 def make_table(result_df, directions, phases):
-    # --- Format output ---
     output_lines = []
     output_lines.append("=" * 100)
     output_lines.append("TCP CCA Pairwise Comparison — Mann-Whitney U Test (§4.6)")
@@ -348,6 +421,10 @@ def main():
     parser.add_argument("csvs", nargs="+", help="TCP csv files")
     parser.add_argument("-o", help="Output text file for results")
     parser.add_argument("-p", "--pdf", help="Plot PDF with pairwise heatmap matrices")
+    parser.add_argument("--show-delta", action="store_true",
+                        help="Show Cliff's δ values inside heatmap cells (default: only stars)")
+    parser.add_argument("--continuous", action="store_true",
+                        help="Use continuous color spectrum instead of discrete magnitude categories")
     parser.add_argument("--phases", nargs="*", default=PHASE_NAMES, help="Phases to test (default: all)")
     args = parser.parse_args()
 
@@ -407,17 +484,17 @@ def main():
 
     # --- Heatmap PDF ---
     if args.pdf:
-        print("\nGenerating heatmap plots …")
-        with PdfPages(args.pdf) as pdf:
-            for phase in phases:
-                phase_data = result_df[result_df.phase == phase]
-                if phase_data.empty:
-                    continue
-                fig = plot_heatmap(result_df, phase)
-                if fig is not None:
-                    pdf.savefig(fig, bbox_inches="tight", pad_inches=0.05)
-                    plt.close(fig)
-        print(f"Heatmap PDF saved to {args.pdf}")
+        print("\nGenerating heatmap …")
+        fig, fig_cb = plot_heatmaps_grid(result_df, phases,
+                                         show_delta=args.show_delta,
+                                         discrete=not args.continuous)
+        if fig is not None:
+            with PdfPages(args.pdf) as pdf:
+                pdf.savefig(fig, bbox_inches="tight", pad_inches=0.05)
+                pdf.savefig(fig_cb, bbox_inches="tight", pad_inches=0.02)
+            plt.close(fig)
+            plt.close(fig_cb)
+            print(f"Heatmap PDF saved to {args.pdf} (page 1: grid, page 2: colorbar)")
 
 
 if __name__ == "__main__":
