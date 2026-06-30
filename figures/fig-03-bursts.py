@@ -62,8 +62,8 @@ def imshow(losses):
     return fig
 
 def imshow_group(dfi, groups, samples, xmajor, xminor):
-    fig, axes = plt.subplots(dpi=300, nrows=len(groups), figsize=(utils.COLUMN_WIDTH/2, 1.4))
-    fig.get_layout_engine().set(h_pad=2/72, hspace=0)
+    fig, axes = plt.subplots(dpi=300, nrows=len(groups), figsize=(utils.COLUMN_WIDTH/2, 1.4), layout="none")
+    fig.subplots_adjust(hspace=0.1)
     ax = None
     size = 0
     for i, (direction, size, pad) in enumerate(groups):
@@ -78,7 +78,7 @@ def imshow_group(dfi, groups, samples, xmajor, xminor):
         print(f"{direction.upper()} {size=} {pad=}: {losses.shape[0]} samples (selected {samples})")
 
         # Select a random subset of rows
-        losses[np.random.choice(losses.shape[0], min(samples, len(losses)), replace=False), :]
+        #jlosses[np.random.choice(losses.shape[0], min(samples, len(losses)), replace=False), :]
 
         ax.imshow(losses[:samples], aspect="auto", interpolation="none", cmap="binary_r")
 

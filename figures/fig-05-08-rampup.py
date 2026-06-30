@@ -87,7 +87,7 @@ def group_df(df, ts_key="ts_rcvd_rel", freq_ms=1.3*10):
     grp_base["gput"] = grp_base["size"] * (1000/freq_ms) * 8 / 1e6
     # return grp_base.groupby(level=[0, 1, 3])[["gput", "owd_ms"]].agg(grp_agg_fns)
     return grp_base.groupby(level=[0, 1, 3])[["gput", "owd_ms"]]\
-                   .apply(utils.get_stats, use_bootstrap=True, method="percentile")
+                   .apply(utils.get_stats, use_bootstrap=False, method="percentile")
 
 def group_dfq(dfq, freq_ms=1.3*10):
     return dfq\
@@ -242,6 +242,11 @@ def main():
                         major=20, minor=10)
         axes[0][1].set_ylim(bottom=10, top=75)
         plot(axes[1][1], grpq.loc["ul"], relative=False, metric="mean", major=500, minor=250)
+
+        col_label = dict(xycoords="axes fraction", xy=(0.02, -0.26),
+                         weight="bold", ha="right", va="top", size="large", zorder=20)
+        axes[1][0].annotate(text="DL", **col_label)
+        axes[1][1].annotate(text="UL", **col_label)
 
     plot_legend(fig, parts_dl, parts_ul)
 

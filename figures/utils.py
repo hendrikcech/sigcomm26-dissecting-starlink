@@ -249,6 +249,7 @@ def direction_color(direction):
 # SUBPLOT_LABEL_STYLE = dict(xy=(0.05, 0.95), weight="bold", ha="left", va="top", xycoords="axes fraction")
 SUBPLOT_TOP_STYLE = dict(xycoords="axes fraction", xy=(0.02, 0.98), weight="bold", ha="left", va="top", size="large", zorder=20)
 SUBPLOT_BOTTOM_STYLE = dict(xycoords="subfigure fraction", xy=(0.01, 0.01), weight="bold", ha="left", va="bottom", size="large", zorder=20)
+AXES_BOTTOM_STYLE = dict(xycoords="axes fraction", xy=(0.01, 0.01), weight="bold", ha="left", va="bottom", size="large", zorder=20)
 
 # --- TCP helpers ---
 # BBR1

@@ -275,15 +275,15 @@ def _fill_heatmap_ax(ax, dir_data, ccas, n, show_delta=False, discrete=True):
                 text_color = "white" if abs(d) > 0.6 else "black"
                 ax.text(j + 0.5, n - 1 - i + 0.5, text,
                         ha="center", va="center",
-                        fontsize=5, fontweight="bold", color=text_color)
+                        fontsize=7, fontweight="bold", color=text_color)
 
     # Axis formatting
     ax.set_xlim(0, n)
     ax.set_ylim(0, n)
     ax.set_xticks(np.arange(n) + 0.5)
-    ax.set_xticklabels(ccas, rotation=45, ha="right", fontsize=6)
+    ax.set_xticklabels(ccas, rotation=45, ha="right", fontsize=8)
     ax.set_yticks(np.arange(n) + 0.5)
-    ax.set_yticklabels(ccas[::-1], fontsize=6)
+    ax.set_yticklabels(ccas[::-1], fontsize=8)
     ax.set_aspect("equal")
     ax.grid(False)
 
@@ -305,10 +305,11 @@ def plot_heatmaps_grid(result_df, phases, show_delta=False, discrete=True):
     ccas += sorted(all_ccas - set(ccas))
     n = len(ccas)
 
-    n_rows = len(directions)
-    n_cols = len(phases)
+    n_rows = len(phases)
+    n_cols = len(directions)
 
-    cell_size = 0.22  # inches per CCA cell — tune to taste
+    # cell_size = 0.22  # inches per CCA cell — tune to taste
+    cell_size = 0.20  # inches per CCA cell — tune to taste
     w = cell_size * n * n_cols + 1.2   # extra for y-tick labels
     h = cell_size * n * n_rows + 0.9   # extra for x-tick labels + titles
 
@@ -317,8 +318,8 @@ def plot_heatmaps_grid(result_df, phases, show_delta=False, discrete=True):
                              squeeze=False,
                              layout="constrained")
 
-    for row_idx, direction in enumerate(directions):
-        for col_idx, phase in enumerate(phases):
+    for row_idx, phase in enumerate(phases):
+        for col_idx, direction in enumerate(directions):
             ax = axes[row_idx, col_idx]
             dir_phase = subset[(subset.direction == direction) &
                                (subset.phase == phase)]
@@ -331,13 +332,10 @@ def plot_heatmaps_grid(result_df, phases, show_delta=False, discrete=True):
 
             # Title: only on top row
             if row_idx == 0:
-                ax.set_title(PHASE_LABELS[phase], fontsize=8)
+                ax.set_title(direction.upper(), fontsize=12, fontweight="bold")
 
-            # Direction label: only on left column
             if col_idx == 0:
-                ax.set_ylabel(direction.upper(), fontsize=8, fontweight="bold")
-            else:
-                ax.set_yticklabels([])
+                ax.set_ylabel(PHASE_LABELS[phase], fontsize=12, fontweight="bold")
 
             # X-tick labels only on bottom row
             if row_idx < n_rows - 1:
@@ -357,11 +355,11 @@ def plot_heatmaps_grid(result_df, phases, show_delta=False, discrete=True):
             Patch(facecolor=DISCRETE_COLORS[("large", +1)],    edgecolor="gray", label="Large (+)"),
         ]
         fig_cb = plt.figure(figsize=(utils.COLUMN_WIDTH * 1.2, 0.35))
-        fig_cb.legend(handles=legend_items, loc="center", ncol=len(legend_items),
-                      fontsize=6, handlelength=1.2, handletextpad=0.4,
+        fig_cb.legend(handles=legend_items, loc="center", ncol=1,
+                      fontsize=8, handlelength=1.2, handletextpad=0.4,
                       columnspacing=0.8, frameon=False,
-                      title="Cliff's δ magnitude  (sign: row > col)",
-                      title_fontsize=7)
+                      title="Cliff's δ magnitude\n(sign: row > col)",
+                      title_fontsize=9)
     else:
         fig_cb = plt.figure(figsize=(utils.COLUMN_WIDTH * 0.7, 0.35))
         sm = plt.cm.ScalarMappable(cmap=HEATMAP_CMAP, norm=HEATMAP_NORM)
@@ -484,7 +482,7 @@ def main():
 
     # --- Heatmap PDF ---
     if args.pdf:
-        print("\nGenerating heatmap …")
+        print("\nGenerating heatmap ...")
         fig, fig_cb = plot_heatmaps_grid(result_df, phases,
                                          show_delta=args.show_delta,
                                          discrete=not args.continuous)

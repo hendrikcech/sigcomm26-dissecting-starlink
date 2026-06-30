@@ -242,7 +242,7 @@ def main():
     if args.sats is not None:
         figs.append(utils.plot_ri_change_with_handovers(grp_ri_owd,  "owd_ms", "OWD Difference [ms]", 50, 10)) # 3
         figs.append(utils.plot_ri_change_with_handovers(grp_ri_gput, "gput",   "BW Difference [Mbps]", 100, 20)) # 4
-        figs[-1].get_axes()[0].annotate(text=f"(d)", **utils.SUBPLOT_TOP_STYLE)
+        figs[-1].get_axes()[0].annotate(text=f"(e)", **utils.SUBPLOT_TOP_STYLE)
     else:
         figs.append(utils.plot_ri_change(grp_ri_owd,  "OWD Change [ms]", 50, 10))
         figs.append(utils.plot_ri_change(grp_ri_gput, "BW Change [Mbps]", 100, 20))

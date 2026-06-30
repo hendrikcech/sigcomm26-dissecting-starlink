@@ -184,6 +184,7 @@ def main():
         figs.append(utils.plot_ri_change_with_handovers(grp_change, "owd_ms", xlabel, 5, 1))
     else:
         figs.append(utils.plot_ri_change(grp_change.owd_ms, xlabel, 5, 1))
+    figs[-1].get_axes()[0].annotate(text=f"(f)", **utils.SUBPLOT_TOP_STYLE)
 
     figs[-1].get_axes()[0].set_xlim(0, 12)
 

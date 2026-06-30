@@ -219,6 +219,7 @@ def main():
     figs[-1].get_axes()[0].yaxis.set_minor_locator(mticker.MultipleLocator(50))
 
     figs.append(plot(["dl", "ul"], "owd_ms", "OWD [ms]", grp, grp_idx)) # 2
+    figs[-1].get_axes()[0].annotate(text=f"(c)", **utils.SUBPLOT_TOP_STYLE)
 
     figs.append(plot(["dl"], "gput", "Received [Mbps]", grp, grp_idx)) # 3
     # ax = figs[-1].get_axes()[0]
@@ -252,7 +253,7 @@ def main():
         ax.set_xlim(-LENS_DURATION_MS/4, LENS_DURATION_MS/2)
 
     figs.append(plot_ri_break_cdf(df)) # 11
-    figs[-1].get_axes()[0].annotate(text=f"(c)", **utils.SUBPLOT_TOP_STYLE)
+    figs[-1].get_axes()[0].annotate(text=f"(d)", **utils.SUBPLOT_TOP_STYLE)
 
     if args.o:
         with PdfPages(args.o) as pdf:

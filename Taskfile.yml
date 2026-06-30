@@ -69,7 +69,6 @@ tasks:
       - python3 figures/fig-02-headdrop.py '{{.DATASET}}'/multidurrate_1s/*multidurrate*/rate_{dl_500,ul_140}_1000.csv --pickle '{{.RESULTS}}/headdrop.pickle' -o '{{.RESULTS}}/fig-02.pdf'
 
   # TODO remove invalid burst sizes from the dataset?
-  # TODO: output ist wrong!
   fig-03:
     desc: "Generate Figure 3."
     cmds:
@@ -159,7 +158,7 @@ tasks:
     desc: "Run significance tests."
     cmds:
       - task: check-vars
-      - python3 figures/fig-10-15-mouseeleph.py stat '{{.DATASET}}'/{mouseeleph_ul,mouseeleph_dl_250}/*/*csv  | tee '{{.RESULTS}}/fig-10-15-stat.txt'
+      - python3 figures/fig-10-15-mouseeleph.py stat '{{.DATASET}}'/{mouseeleph_ul,mouseeleph_dl_250}/*/*csv -o '{{.RESULTS}}/fig-10-15-stat.txt'
 
   # TODO: works but plot again and compare with paper figure
   fig-11:
@@ -184,6 +183,12 @@ tasks:
     cmds:
       - task: check-vars
       - python3 figures/tcp-stat.py '{{.DATASET}}'/tcp/*/{tcp,udp}_{dl,ul}_*_12000.csv -o '{{.RESULTS}}/tcp-stat.txt' -p '{{.RESULTS}}/tcp-stat.pdf'
+
+  tcp-metrics:
+    desc: "Gather TCP metrics"
+    cmds:
+      - task: check-vars
+      - python3 figures/tcp-metrics.py -g tcp '{{.DATASET}}'/tcp/*/tcp_{dl,ul}_*_12000.csv -o '{{.RESULTS}}/tcp-metrics.txt'
     
 
   # Confirmed to work
@@ -194,11 +199,12 @@ tasks:
       - python3 figures/fig-13-switchflow.py '{{.DATASET}}'/switchflow/*/rate_{ul,dl}_{0200,0300,0700,0020,0040,0070}_*.csv -o '{{.RESULTS}}/fig-13-switchflow.pdf'
 
   # TODO: data is different from the paper!
-  fig-17:
-    desc: "Generate Figure 17."
+  # TODO: rename
+  fig-18-owd:
+    desc: "Generate Figure 18 (OWD)."
     cmds:
       - task: check-vars
-      - python3 figures/fig-17-owd.py --sats '{{.DATASET}}/tle_2026-01-11.csv' -o '{{.RESULTS}}/fig-17-owd-udp.pdf' -- '{{.DATASET}}'/owd/*/owd-udp_{ul,dl}.csv
+      - python3 figures/fig-18-owd.py --sats '{{.DATASET}}/tle_2026-01-11.csv' -o '{{.RESULTS}}/fig-18-owd-udp.pdf' -- '{{.DATASET}}'/owd/*/owd-udp_{ul,dl}.csv
 
   # TODO: compare output with paper
   # not in the paper or is it?
@@ -248,7 +254,7 @@ tasks:
 
   # TODO: could also look at AQM
 
-  # TODO: figure is collapsed; why?
+  # Works
   fig-03-vic:
     desc: "Generate Figure 3."
     cmds:
@@ -270,3 +276,53 @@ tasks:
 
   # --- star-victoria-node
   # owd: 71 from 2025-06
+
+
+  # --- Data from waterloo:
+  # 386 multidurrate_dl
+  # 371 multidurrate_ul
+  # 170 owd_dl
+  # 164 owd_ul
+  # 850 progdurmultirate_dl
+  # 848 progdurmultirate_ul
+  #  81 rate_dl
+  # 801 rateri_dl # these are deprecated; don't include in the dataset?
+  # 791 rateri_ul
+
+  # TODO: check if I should actually ship progdurrate results
+  fig-02-wat:
+    desc: "Generate Figure 2."
+    cmds:
+      - task: check-vars
+      # headdrop.pickle is needed by netns-drop figure
+      - python3 figures/fig-02-headdrop.py '{{.DATASET}}'/wat/multidurrate/*multidurrate*/rate_{dl_500,ul_140}_1000.csv --pickle '{{.RESULTS}}/headdrop_wat.pickle' -o '{{.RESULTS}}/fig-02-wat.pdf'
+
+  # check which rates are available where
+  fig-05-wat:
+    desc: "Generate Figure 5."
+    cmds:
+      - task: check-vars
+      - python3 figures/fig-05-08-rampup.py  '{{.DATASET}}'/wat/multidurrate/*/rate_*_1500.csv -o '{{.RESULTS}}/fig-05-rampup-wat.pdf'
+  
+  # Scripts works
+  fig-08-wat:
+    desc: "Generate Figure 8."
+    cmds:
+      - task: check-vars
+      - python3 figures/fig-05-08-rampup.py  '{{.DATASET}}'/wat/multidurrate/*/rate_dl_{300,500,700}_1500.csv -o '{{.RESULTS}}/fig-08-rampup-outlier-wat.pdf'
+  
+  # TODO: remove old "owd_dl.csv" (no separation of icmp and udp) from the dataset
+  # Scripts works
+  fig-18-owd-wat:
+    desc: "Generate Figure 18 (OWD)."
+    cmds:
+      - task: check-vars
+      - python3 figures/fig-18-owd.py -o '{{.RESULTS}}/fig-18-owd-udp-wat.pdf' -- '{{.DATASET}}'/wat/owd/*/owd-udp_{ul,dl}.csv
+
+  # Scripts works
+  fig-18-idle-wat:
+    desc: "Generate Figure 18 (idle)."
+    cmds:
+      - task: check-vars
+      - python3 figures/fig-18-loss.py -o '{{.RESULTS}}/fig-18-loss-idle-wat.pdf' -- '{{.DATASET}}'/wat/owd/*/owd-udp_{ul,dl}.csv
+

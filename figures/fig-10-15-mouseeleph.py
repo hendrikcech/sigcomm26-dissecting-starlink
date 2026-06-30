@@ -259,6 +259,7 @@ def build_dataframe(args):
 
     rows = utils.parse_csvs(paths, parse_csvs, parallel=True, concat=False, sample=args.n)
     df = pd.DataFrame(rows, columns=columns)
+    df["fair"] = ((df.gput_eleph + df.gput_mouse) / 2 >= df.rate_mouse).astype("category") # is the mouse rate within its fair share?
     return df
 
 
@@ -268,7 +269,6 @@ def cmd_plot(args):
     df = build_dataframe(args)
 
     grp = df.groupby(["direction", "rate_eleph", "rate_mouse"]).agg(["mean", "std", "median", "count"])
-    df["fair"] = ((df.gput_eleph + df.gput_mouse) / 2 >= df.rate_mouse).astype("category") # is the mouse rate within its fair share?
     df["queue_total"] = df.queue_eleph + df.queue_mouse
     grp_fair_ul = df[df.direction == "ul"].groupby(["direction", "rate_eleph", "rate_mouse", "fair"], observed=False).agg(["mean", "std", "median", "count"])
     grp_fair_dl = df[df.direction == "dl"].groupby(["direction", "rate_eleph", "rate_mouse", "fair"], observed=False).agg(["mean", "std", "median", "count"])
@@ -337,69 +337,106 @@ def cmd_plot(args):
 def cmd_stat(args):
     """Run paired Wilcoxon signed-rank tests on mouse vs elephant loss rates."""
     from scipy.stats import wilcoxon
+    import sys
 
-    df = build_dataframe(args)
+    out_f = open(args.o, "w") if getattr(args, "o", None) else sys.stdout
 
-    for direction in ["dl", "ul"]:
-        d = df[df.direction == direction]
+    def out_print(*a, **kw):
+        print(*a, file=out_f, **kw)
 
-        print(f"{'=' * 60}")
-        if direction == "dl":
-            print(f"DL Loss Coupling")
-            print(f"  Claim: mouse and elephant experience nearly identical loss")
-        else:
-            print(f"UL Flow Isolation")
-            print(f"  Claim: losses are NOT coupled across flows on the UL")
-        print(f"  Test: Paired Wilcoxon signed-rank (two-sided)")
-        print(f"  n = {len(d)} paired runs")
-        print()
+    try:
+        df = build_dataframe(args)
 
-        # --- Aggregate Wilcoxon test across all rates ---
-        res = wilcoxon(d["loss_eleph"], d["loss_mouse"], alternative="two-sided")
-        n = len(d)
-        r = 1 - (2 * res.statistic) / (n * (n + 1) / 2) # effect size: rank-biserial correlation
+        for direction in ["dl", "ul"]:
+            d = df[df.direction == direction]
 
-        print(f"  Aggregate (all rates):")
-        print(f"    Wilcoxon W = {res.statistic:.1f}")
-        print(f"    p = {res.pvalue:.4g}")
-        print(f"    rank-biserial r = {r:+.4f}")
-        print()
+            if direction == "ul":
+                d = d[d.fair]
 
-        # --- TOST equivalence test for DL ---
-        if direction == "dl":
-            delta = 2  # equivalence margin in percentage points
-            diffs = d["loss_eleph"].values - d["loss_mouse"].values
-            _, p_upper = wilcoxon(diffs - delta, alternative="less")
-            _, p_lower = wilcoxon(diffs + delta, alternative="greater")
-            p_tost = max(p_upper, p_lower)
-            print(f"  TOST equivalence test (Δ = ±{delta} pp):")
-            print(f"    p_upper = {p_upper:.4g}  (H₀: diff ≥ +Δ)")
-            print(f"    p_lower = {p_lower:.4g}  (H₀: diff ≤ −Δ)")
-            print(f"    p_TOST  = {p_tost:.4g}")
-            if p_tost < 0.05:
-                print(f"    → Equivalence established at α=0.05")
+            out_print(f"{'=' * 60}")
+            if direction == "dl":
+                out_print(f"DL Loss Coupling")
+                out_print(f"  Claim: mouse and elephant experience nearly identical loss")
             else:
-                print(f"    → Equivalence NOT established")
-            print()
+                out_print(f"UL Flow Isolation")
+                out_print(f"  Claim: losses are NOT coupled across flows on the UL (fair-share mouse flows only)")
+            out_print(f"  Test: Paired Wilcoxon signed-rank (two-sided)")
+            out_print(f"  n = {len(d)} paired runs")
+            out_print()
 
-        # --- Per-rate breakdown ---
-        print(f"  Per mouse-rate breakdown:")
-        print(f"    {'rate':>5s}  {'n':>4s}  {'W':>10s}  {'p':>10s}  {'r':>8s}  {'sig':>3s}   {'mean_e':>7s}  {'mean_m':>7s}")
-        for rate, grp in d.groupby("rate_mouse"):
-            me = grp["loss_eleph"].mean()
-            mm = grp["loss_mouse"].mean()
-            if len(grp) < 5:
-                print(f"    {rate:5.0f}  {len(grp):4d}  {'(too few)':>10s}  {'':>10s}  {'':>8s}  {'':>3s}   {me:7.2f}  {mm:7.2f}")
-                continue
-            try:
-                res_r = wilcoxon(grp["loss_eleph"], grp["loss_mouse"], alternative="two-sided")
-                n_r = len(grp)
-                r_r = 1 - (2 * res_r.statistic) / (n_r * (n_r + 1) / 2)
-                sig = "***" if res_r.pvalue < 0.001 else "**" if res_r.pvalue < 0.01 else "*" if res_r.pvalue < 0.05 else "ns"
-                print(f"    {rate:5.0f}  {n_r:4d}  {res_r.statistic:10.1f}  {res_r.pvalue:10.4g}  {r_r:+8.4f}  {sig:>3s}   {me:7.2f}  {mm:7.2f}")
-            except ValueError as e:
-                print(f"    {rate:5.0f}  {len(grp):4d}  skipped ({e})")
-        print()
+            # --- Aggregate Wilcoxon test across all rates ---
+            res = wilcoxon(d["loss_eleph"], d["loss_mouse"], alternative="two-sided")
+            n = len(d)
+            r = 1 - (2 * res.statistic) / (n * (n + 1) / 2) # effect size: rank-biserial correlation
+
+            out_print(f"  Aggregate (all rates):")
+            out_print(f"    Wilcoxon W = {res.statistic:.1f}")
+            out_print(f"    p = {res.pvalue:.4g}")
+            out_print(f"    rank-biserial r = {r:+.4f}")
+            out_print()
+
+            # --- TOST equivalence test for DL ---
+            if direction == "dl":
+                delta = 2  # equivalence margin in percentage points
+                diffs = d["loss_eleph"].values - d["loss_mouse"].values
+                _, p_upper = wilcoxon(diffs - delta, alternative="less")
+                _, p_lower = wilcoxon(diffs + delta, alternative="greater")
+                p_tost = max(p_upper, p_lower)
+                out_print(f"  TOST equivalence test (Δ = ±{delta} pp):")
+                out_print(f"    p_upper = {p_upper:.4g}  (H₀: diff ≥ +Δ)")
+                out_print(f"    p_lower = {p_lower:.4g}  (H₀: diff ≤ −Δ)")
+                out_print(f"    p_TOST  = {p_tost:.4g}")
+                if p_tost < 0.05:
+                    out_print(f"    → Equivalence established at α=0.05")
+                else:
+                    out_print(f"    → Equivalence NOT established")
+                out_print()
+
+            # --- Per-rate breakdown ---
+            out_print(f"  Per mouse-rate breakdown:")
+            out_print(f"    {'rate':>5s}  {'n':>4s}  {'W':>10s}  {'p':>10s}  {'r':>8s}  {'sig':>3s}   {'mean_e':>7s}  {'mean_m':>7s}")
+            
+            latex_rows = []
+            
+            for rate, grp in d.groupby("rate_mouse"):
+                me = grp["loss_eleph"].mean()
+                mm = grp["loss_mouse"].mean()
+                md = me - mm
+                if len(grp) < 5:
+                    out_print(f"    {rate:5.0f}  {len(grp):4d}  {'(too few)':>10s}  {'':>10s}  {'':>8s}  {'':>3s}   {me:7.2f}  {mm:7.2f}")
+                    latex_rows.append(f"    {rate:.0f} & {len(grp)} & -- & -- & {me:.2f} & {mm:.2f} & {md:.2f} \\\\")
+                    continue
+                try:
+                    res_r = wilcoxon(grp["loss_eleph"], grp["loss_mouse"], alternative="two-sided")
+                    n_r = len(grp)
+                    r_r = 1 - (2 * res_r.statistic) / (n_r * (n_r + 1) / 2)
+                    sig = "***" if res_r.pvalue < 0.001 else "**" if res_r.pvalue < 0.01 else "*" if res_r.pvalue < 0.05 else "n.s."
+                    out_print(f"    {rate:5.0f}  {n_r:4d}  {res_r.statistic:10.1f}  {res_r.pvalue:10.4g}  {r_r:+8.4f}  {sig:>3s}   {me:7.2f}  {mm:7.2f}")
+                    
+                    # Latex row
+                    r_str = f"{r_r:+.2f}"
+                    latex_rows.append(f"    {rate:.0f} & {n_r} & {r_str} & {sig} & {me:.2f} & {mm:.2f} & {md:.2f} \\\\")
+                    
+                except ValueError as e:
+                    out_print(f"    {rate:5.0f}  {len(grp):4d}  skipped ({e})")
+                    latex_rows.append(f"    {rate:.0f} & {len(grp)} & -- & -- & {me:.2f} & {mm:.2f} & {md:.2f} \\\\")
+            out_print()
+            
+            # Print latex table
+            out_print(f"  LaTeX Table ({direction.upper()}):")
+            out_print(r"  \begin{tabular}{rrrrrrr}")
+            out_print(r"  \toprule")
+            out_print(r"  Rate [Mbps] & $n$ & Effect Size ($r$) & Significance & Mean Eleph. [\%] & Mean Mouse [\%] & Mean Difference [\%] \\")
+            out_print(r"  \midrule")
+            for row in latex_rows:
+                out_print(row)
+            out_print(r"  \bottomrule")
+            out_print(r"  \end{tabular}")
+            out_print()
+
+    finally:
+        if getattr(args, "o", None) and out_f is not sys.stdout:
+            out_f.close()
 
 
 def main():
@@ -414,7 +451,8 @@ def main():
     plot_parser.add_argument("-b", action="store_true", help="drop into debugger")
     plot_parser.add_argument("-o", help="output PDF path")
 
-    subparsers.add_parser("stat", parents=[parent_parser], help="Run Wilcoxon signed-rank tests")
+    stat_parser = subparsers.add_parser("stat", parents=[parent_parser], help="Run Wilcoxon signed-rank tests")
+    stat_parser.add_argument("-o", help="output analysis text to PATH")
 
     args = parser.parse_args()
 
