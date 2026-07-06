@@ -53,12 +53,14 @@ tasks:
           fi;
         done | tee '{{.RESULTS}}/count-experiments.txt'
 
-  # --- Figures ---
+  # --- Helpers ---
 
   sync:
     cmds:
       - rsync -Pr --copy-links * .* --exclude .venv --exclude *pdf --exclude .mypy_cache testbed-02:trace/git
       - rsync -P testbed-02:trace/git-results/*{pdf,txt} ../git-results/
+
+  # --- Figures ---
 
   # Confirmed to work but computing CIs takes 4 min
   fig-02:
@@ -68,7 +70,7 @@ tasks:
       # headdrop.pickle is needed by netns-drop figure
       - python3 figures/fig-02-headdrop.py '{{.DATASET}}'/multidurrate_1s/*multidurrate*/rate_{dl_500,ul_140}_1000.csv --pickle '{{.RESULTS}}/headdrop.pickle' -o '{{.RESULTS}}/fig-02.pdf'
 
-  # TODO remove invalid burst sizes from the dataset?
+  # Confirmed
   fig-03:
     desc: "Generate Figure 3."
     cmds:
@@ -80,7 +82,7 @@ tasks:
     # TODO: this should also work with self-measured data from the netns experiment scripts
     cmds:
       - task: check-vars
-      - python3 figures/netns-drop.py '{{.DATASET}}'/netns/{head-drop-ul,tail-drop-ul,head-drop-dl,tail-drop-dl}.csv '{{.RESULTS}}/headdrop.pickle' -o '{{.RESULTS}}/fig-04.pdf'
+      - python3 figures/fig-04-netns-drop.py '{{.DATASET}}'/netns/{head-drop-ul,tail-drop-ul,head-drop-dl,tail-drop-dl}.csv '{{.RESULTS}}/headdrop.pickle' -o '{{.RESULTS}}/fig-04.pdf'
     preconditions:
       - sh: test -f '{{.RESULTS}}/headdrop.pickle'
         msg: 'fig-04 depends on headdrop.pickle that is produced by fig-02: run task fig-02 first'
@@ -110,28 +112,31 @@ tasks:
 
   fig-07-14:
     desc: "Generate Figure 7."
-    # TODO: needs loss_input.parquet from aqm-input.py (formerly aqm/loss_input.py)
     cmds:
       - task: check-vars
-      - python3 figures/fig-07-14-aqm.py '{{.RESULTS}}'/loss_input.parquet -o '{{.RESULTS}}/fig-07-14-aqm.pdf'
+      - python3 figures/fig-07-14-aqm.py '{{.RESULTS}}'/aqm-input.parquet -o '{{.RESULTS}}/fig-07-14-aqm.pdf'
+    preconditions:
+      - sh: test -f '{{.RESULTS}}/aqm-input.parquet'
+        msg: 'fig-07-14 depends on aqm-input.parquet that is produced by aqm-input: first run task aqm-input'
 
   aqm-input:
     desc: "Generate data for fig-07-aqm"
     cmds:
       - task: check-vars
-      - python3 figures/aqm-input.py '{{.RESULTS}}'/loss_input.parquet -o '{{.RESULTS}}/fig-07-aqm.pdf'
+      - python3 figures/aqm-input.py -o '{{.RESULTS}}'/aqm-input.parquet '{{.DATASET}}'/multidurrate_4s/*/rate*_4000.csv '{{.DATASET}}'/tcp/*/tcp*packets.csv
 
-      # TODO: find relevant data: new location
-        # EXTRA_ARGS: "/u/home/cech/trace/vm/220251209_tcpri/*tcpri*/tcp*packets.csv"
-        # # INPUT_GLOB: "trace/results/20251126_multidurrate/*/rate_{dl,ul}_*_4000.csv"
-        # INPUT_GLOB: "trace/results/202602_multidurrate/*/rate_{dl,ul}_*_4000.csv"
+  aqm-input-satpipe:
+    desc: "Generate data for fig-07-aqm with the tcp-satpipe data"
+    cmds:
+      - task: check-vars
+      - python3 figures/aqm-input.py -o '{{.RESULTS}}'/aqm-input-satpipe.parquet '{{.DATASET}}'/multidurrate_4s/*/rate*_4000.csv '{{.DATASET}}'/tcp-satpipe/*/tcp*packets.csv
     
   # Confirmed to work
   fig-08:
     desc: "Generate Figure 8."
     cmds:
       - task: check-vars
-      - python3 figures/fig-05-08-rampup.py  '{{.DATASET}}'/multidurrate_4s/*/rate_dl_{500,600,700}_*.csv -o '{{.RESULTS}}/fig-08-rampup-outlier.pdf'
+      - python3 figures/fig-05-08-rampup.py --xlim 1200 '{{.DATASET}}'/multidurrate_4s/*/rate_dl_{500,600,700}_*.csv -o '{{.RESULTS}}/fig-08-rampup-outlier.pdf'
 
   # Confirmed to work
   fig-09-rateri:
@@ -154,6 +159,7 @@ tasks:
       - task: check-vars
       - python3 figures/fig-10-15-mouseeleph.py plot '{{.DATASET}}'/{mouseeleph_ul,mouseeleph_dl_250}/*/*csv -o '{{.RESULTS}}/fig-10-15-mouseeleph.pdf'
 
+  # Confirmed
   fig-10-15-stat:
     desc: "Run significance tests."
     cmds:
@@ -168,27 +174,38 @@ tasks:
     # TODO change import to tcpri
     cmds:
       - task: check-vars
-      - python3 figures/fig-11-tcpss.py '{{.DATASET}}'/tcp/*/tcp_{dl,ul}_*_12000.csv -o '{{.RESULTS}}/fig-11-tcpss.pdf'
+      - python3 figures/fig-11-tcpss.py '{{.DATASET}}'/tcp-satpipe/*/tcp_{dl,ul}_*_12000.csv -o '{{.RESULTS}}/fig-11-tcpss.pdf'
 
   # TODO: works but plot again and compare with paper figure
   fig-12:
     desc: "Generate Figure 12."
-    # TODO: copy the relevant data to DATASET
     cmds:
       - task: check-vars
-      - python3 figures/fig-12-tcpri.py '{{.DATASET}}'/tcp/*/{tcp,udp}_{dl,ul}_*_12000.csv -o '{{.RESULTS}}/fig-12-tcpri.pdf'
+      - python3 figures/fig-12-tcpri.py '{{.DATASET}}'/tcp-satpipe/*/{tcp,udp}_{dl,ul}_*_12000.*csv -o '{{.RESULTS}}/fig-12-tcpri.pdf'
 
+  # Confirmed
   tcp-stat:
     desc: "Run TCP significance tests"
     cmds:
       - task: check-vars
-      - python3 figures/tcp-stat.py '{{.DATASET}}'/tcp/*/{tcp,udp}_{dl,ul}_*_12000.csv -o '{{.RESULTS}}/tcp-stat.txt' -p '{{.RESULTS}}/tcp-stat.pdf'
+      - python3 figures/tcp-stat.py '{{.DATASET}}'/tcp-satpipe/*/{tcp,udp}_{dl,ul}_*_12000.csv -o '{{.RESULTS}}/tcp-stat.txt' -p '{{.RESULTS}}/tcp-stat.pdf'
+  tcp-stat-jan:
+    desc: "Run TCP significance tests"
+    cmds:
+      - task: check-vars
+      - python3 figures/tcp-stat.py '{{.DATASET}}'/tcp/*/{tcp,udp}_{dl,ul}_*_12000.csv -o '{{.RESULTS}}/tcp-stat-jan.txt' -p '{{.RESULTS}}/tcp-stat-jan.pdf'
 
+  # Confirmed
   tcp-metrics:
     desc: "Gather TCP metrics"
     cmds:
       - task: check-vars
-      - python3 figures/tcp-metrics.py -g tcp '{{.DATASET}}'/tcp/*/tcp_{dl,ul}_*_12000.csv -o '{{.RESULTS}}/tcp-metrics.txt'
+      - python3 figures/tcp-metrics.py -g tcp '{{.DATASET}}'/tcp-satpipe/*/tcp_{dl,ul}_*_12000.csv -o '{{.RESULTS}}/tcp-metrics.txt'
+  tcp-metrics-jan:
+    desc: "Gather TCP metrics"
+    cmds:
+      - task: check-vars
+      - python3 figures/tcp-metrics.py -g tcp '{{.DATASET}}'/tcp/*/tcp_{dl,ul}_*_12000.csv -o '{{.RESULTS}}/tcp-metrics-jan.txt'
     
 
   # Confirmed to work
@@ -198,8 +215,7 @@ tasks:
       - task: check-vars
       - python3 figures/fig-13-switchflow.py '{{.DATASET}}'/switchflow/*/rate_{ul,dl}_{0200,0300,0700,0020,0040,0070}_*.csv -o '{{.RESULTS}}/fig-13-switchflow.pdf'
 
-  # TODO: data is different from the paper!
-  # TODO: rename
+# Confirmed
   fig-18-owd:
     desc: "Generate Figure 18 (OWD)."
     cmds:
@@ -326,3 +342,10 @@ tasks:
       - task: check-vars
       - python3 figures/fig-18-loss.py -o '{{.RESULTS}}/fig-18-loss-idle-wat.pdf' -- '{{.DATASET}}'/wat/owd/*/owd-udp_{ul,dl}.csv
 
+
+  # --- TODO ---- remove
+  fig-03-tud:
+    desc: "Generate Figure 3."
+    cmds:
+      - task: check-vars
+      - python3 figures/fig-03-bursts.py /u/home/cech/ceph_leoscope/tud/*burst_{dl,ul}/burst_*_*_*.csv -o '{{.RESULTS}}/fig-03-bursts-tud.pdf'
