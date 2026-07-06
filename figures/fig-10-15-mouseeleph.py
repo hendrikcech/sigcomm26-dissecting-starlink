@@ -259,7 +259,12 @@ def build_dataframe(args):
 
     rows = utils.parse_csvs(paths, parse_csvs, parallel=True, concat=False, sample=args.n)
     df = pd.DataFrame(rows, columns=columns)
-    df["fair"] = ((df.gput_eleph + df.gput_mouse) / 2 >= df.rate_mouse).astype("category") # is the mouse rate within its fair share?
+    return df
+
+
+def add_fair(df):
+    """Flag whether the mouse rate is within its fair share (adds the categorical `fair` column)."""
+    df["fair"] = ((df.gput_eleph + df.gput_mouse) / 2 >= df.rate_mouse).astype("category")
     return df
 
 
@@ -269,6 +274,7 @@ def cmd_plot(args):
     df = build_dataframe(args)
 
     grp = df.groupby(["direction", "rate_eleph", "rate_mouse"]).agg(["mean", "std", "median", "count"])
+    add_fair(df)
     df["queue_total"] = df.queue_eleph + df.queue_mouse
     grp_fair_ul = df[df.direction == "ul"].groupby(["direction", "rate_eleph", "rate_mouse", "fair"], observed=False).agg(["mean", "std", "median", "count"])
     grp_fair_dl = df[df.direction == "dl"].groupby(["direction", "rate_eleph", "rate_mouse", "fair"], observed=False).agg(["mean", "std", "median", "count"])
@@ -346,6 +352,7 @@ def cmd_stat(args):
 
     try:
         df = build_dataframe(args)
+        add_fair(df)
 
         for direction in ["dl", "ul"]:
             d = df[df.direction == direction]
