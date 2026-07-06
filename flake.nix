@@ -4,9 +4,11 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-26.05";
     utils.url = "github:numtide/flake-utils";
+    pcap-match.url = "github:hendrikcech/pcap-match";
+    pcap-match.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = { self, nixpkgs, utils }:
+  outputs = { self, nixpkgs, utils, pcap-match }:
     utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs { inherit system; };
@@ -19,43 +21,17 @@
           pyarrow
         ]);
 
-        packages = [ pythonEnv pkgs.coreutils pkgs.go-task ];
-
-        envRunner = pkgs.writeShellApplication {
-          name = "run-env";
-          runtimeInputs = packages;
-          text = ''
-            # Only make the nix-defined packages available
-            export PATH="${pkgs.lib.makeBinPath packages}"
-
-            if [ $# -eq 0 ]; then
-              echo "Error: No command provided."
-              echo "Usage: nix run . -- <command> [args...]"
-              exit 1
-            fi
-            
-            exec "$@"
-          '';
-        };
+        packages = [ pythonEnv pkgs.coreutils pkgs.go-task pcap-match.packages.${system}.default ];
       in
       {
-        # Interactive Development Shell (`nix develop`)
+        # Interactive Development Shell: use with `nix develop` for an
+        # interactive shell or `nix develop -c <CMD>` for a one-off command
         devShells.default = pkgs.mkShell {
           inherit packages;
 
           shellHook = ''
             echo "Research environment loaded!"
           '';
-        };
-
-        # Package definition
-        packages.default = envRunner;
-
-        # Direct execution via `nix run`
-        apps.default = {
-          type = "app";
-          description = "Run a command in the custom environment";
-          program = "${envRunner}/bin/run-env";
         };
       }
     );

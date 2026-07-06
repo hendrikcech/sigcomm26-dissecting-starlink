@@ -60,6 +60,18 @@ tasks:
       - rsync -Pr --copy-links * .* --exclude .venv --exclude *pdf --exclude .mypy_cache testbed-02:trace/git
       - rsync -P testbed-02:trace/git-results/*{pdf,txt} ../git-results/
 
+  # --- Process TCP measurements ---
+  process-tcp:*:
+    desc: |
+      Process NetScalpel TCP measurements with match-pcaps; expects a top-level
+      directory which is filtered for {{.INFO_FILE}} files to process.
+    vars:
+      DIR: '{{index .MATCH 0}}'
+      LOG: "{{.DIR}}/{{.TASK}}.log"
+      INFO_FILE: '{{.INFO_FILE | default "info.txt"}}'
+    cmds:
+      - find "{{.DIR}}" -iname {{.INFO_FILE}} -print0 | parallel -0 --bar --group --joblog "{{.LOG}}" bash "tcp/pcap-match-tcp.sh" "{}"
+
   # --- Figures ---
 
   # Confirmed to work but computing CIs takes 4 min
