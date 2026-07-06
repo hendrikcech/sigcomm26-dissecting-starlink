@@ -168,17 +168,9 @@ CCA_COLORS = {
     "udp": "black",
 }
 
-def plot(grp, xlabel, ylabel):
-    fig, ax = plt.subplots(figsize=FIGSIZE, layout="constrained")
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-
+def plot_on_ax(ax, grp):
+    """Plot CCA lines with confidence bands onto an existing axes. Returns line artists."""
     parts = []
-    # for i, cca in enumerate(list(grp.index.levels[0]) + ["UDP"]):
-        # print(cca)
-        # if cca == "udp":
-        #     continue
-        # if cca == "UDP":
     for cca in grp.index.levels[0]:
         if cca not in CCA_LINESTYLES:
             print(f"WARNING: CCA {cca} in grp but not in CCA_LINESTYLES")
@@ -199,6 +191,14 @@ def plot(grp, xlabel, ylabel):
             ax.fill_between(index, cil, cih, color=color, alpha=0.2, edgecolor="white") # color=color,
         except:
             breakpoint()
+    return parts
+
+def plot(grp, xlabel, ylabel):
+    fig, ax = plt.subplots(figsize=FIGSIZE, layout="constrained")
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+
+    parts = plot_on_ax(ax, grp)
 
     fig_legend = utils.plot_external_legend(parts, ncol=np.ceil(len(parts)/2),
                                             figsize=(FIGSIZE[0], 1.3))
@@ -224,6 +224,54 @@ def plot_rtt(grp):
         color = CCA_COLORS[cca]
         ax.plot(index, data["mean"], color=color, label=utils.cca_label(cca))
         ax.fill_between(index, cil, cih, color=color, alpha=0.2, edgecolor="white")
+
+    return fig
+
+def plot_combined(gput, grp_queue):
+    """2x2 figure: top=receive rate, bottom=queue size, left=DL, right=UL."""
+    fig, axes = plt.subplots(2, 2, figsize=(utils.FULL_WIDTH, FIGSIZE[1] * 2 + 0.3),
+                             layout="constrained")
+
+    has_ul_gput = "ul" in gput.index.levels[0]
+    has_ul_queue = grp_queue is not None and "ul" in grp_queue.index.levels[0]
+
+    # Top-left: DL receive rate
+    plot_on_ax(axes[0, 0], gput.loc["dl"])
+    axes[0, 0].set_ylabel("Receive Rate [Mbps]")
+    axes[0, 0].set_ylim(0, 400)
+    # axes[0, 0].set_title("Downlink")
+
+    # Top-right: UL receive rate
+    if has_ul_gput:
+        plot_on_ax(axes[0, 1], gput.loc["ul"])
+        axes[0, 1].set_ylim(0, 80)
+    else:
+        axes[0, 1].set_visible(False)
+    # axes[0, 1].set_title("Uplink")
+
+    # Bottom-left: DL queue size
+    if grp_queue is not None:
+        plot_on_ax(axes[1, 0], grp_queue.loc["dl"])
+    else:
+        axes[1, 0].set_visible(False)
+    axes[1, 0].set_ylabel("Queue Size [Packets]")
+    axes[1, 0].set_xlabel("Time [ms]")
+
+    # Bottom-right: UL queue size
+    if has_ul_queue:
+        plot_on_ax(axes[1, 1], grp_queue.loc["ul"])
+    else:
+        axes[1, 1].set_visible(False)
+    axes[1, 1].set_xlabel("Time [ms]")
+
+    # Add shared x-label to top row
+    axes[0, 0].set_xlabel("Receive Time [ms]")
+    axes[0, 1].set_xlabel("Receive Time [ms]")
+
+    col_label = dict(xycoords="axes fraction", xy=(0.0, -0.26),
+                     weight="bold", ha="right", va="top", size="large", zorder=20)
+    axes[1][0].annotate(text="DL", **col_label)
+    axes[1][1].annotate(text="UL", **col_label)
 
     return fig
 
@@ -293,14 +341,13 @@ def main():
     udp_args = list(zip(udp_files, range(len(udp_files))))
     df_udp = utils.parse_csvs(udp_args, parse_udp_csv, cores=12) if len(udp_args) > 0 else None
 
-    print(f"Grouping dfs")
-    with multiprocessing.Pool(multiprocessing.cpu_count()) as pool:
-        grp_tcp = pool.apply_async(group_tcp_df, [df_tcp])
-        grp_queue = pool.apply_async(group_queue_df, [df_queue]) if df_queue is not None else None
-        grp_udp = pool.apply_async(group_udp_df, [df_udp]) if df_udp is not None else None
-        grp_tcp = grp_tcp.get()
-        grp_queue = grp_queue.get() if grp_queue is not None else None
-        grp_udp = grp_udp.get() if grp_udp is not None else None
+    print(f"Grouping tcp")
+    grp_tcp = group_tcp_df(df_tcp)
+    print(f"Grouping queue")
+    grp_queue = group_queue_df(df_queue) if df_queue is not None else None
+    print(f"Grouping udp")
+    grp_udp = group_udp_df(df_udp) if df_udp is not None else None
+    print(f"done")
 
     if args.b:
         breakpoint()
@@ -322,8 +369,13 @@ def main():
 
     # gput_dl = pd.concat([grp_udp.loc["dl"]["gput"], grp_tcp.loc["dl"]["gput"]])
     figs.extend(plot(gput.loc["dl"], xlabel_recv, ylabel_gput))
+    fig_legend = figs[0] # save reference to legend (first element from extend)
     figs[-1].get_axes()[0].set_ylim(0, 400)
     # annotate_phases(figs[-1].get_axes()[0])
+
+    # Combined 2x2 figure — inserted after legend so it becomes page 2
+    fig_combined = plot_combined(gput, grp_queue)
+    figs.insert(1, fig_combined)
 
     # gput_ul = pd.concat([grp_udp.loc["ul"]["gput"], grp_tcp.loc["ul"]["gput"]])
     if "ul" in gput.index.levels[0]:
@@ -358,6 +410,14 @@ def main():
     if args.o:
         with PdfPages(args.o) as pdf:
             for i, fig in enumerate(figs):
+                if fig is fig_combined:
+                    for ax in fig.get_axes():
+                        ax.set_xlim(-6000, 6000)
+                        annotate_phases(ax)
+                        ax.xaxis.set_major_locator(mticker.MultipleLocator(2000))
+                        ax.xaxis.set_minor_locator(mticker.MultipleLocator(500))
+                    pdf.savefig(fig, bbox_inches="tight", pad_inches=0)
+                    continue
                 try:
                     ax = fig.get_axes()[0]
                     ax.set_xlim(-500, 1000)
