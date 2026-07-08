@@ -1,0 +1,66 @@
+From 05e23196e86206d29c24cda47df313d1a2b9d120 Mon Sep 17 00:00:00 2001
+From: Hendrik Cech <hendrik.cech@gmail.com>
+Date: Thu, 2 Oct 2025 14:41:21 +0200
+Subject: [PATCH 07/12] hystart++: Disable BTF functionality
+
+---
+ net/ipv4/tcp_cubic_hystartpp.c | 32 +++++++++++++++-----------------
+ 1 file changed, 15 insertions(+), 17 deletions(-)
+
+diff --git a/net/ipv4/tcp_cubic_hystartpp.c b/net/ipv4/tcp_cubic_hystartpp.c
+index 3e319ffcdf09..9c637b6b790f 100644
+--- a/net/ipv4/tcp_cubic_hystartpp.c
++++ b/net/ipv4/tcp_cubic_hystartpp.c
+@@ -681,24 +681,22 @@ static struct tcp_congestion_ops cubichystartpp __read_mostly = {
+ 	.name		= "cubic_hystartpp",
+ };
+ 
+-BTF_KFUNCS_START(tcp_cubic_check_kfunc_ids)
+-BTF_ID_FLAGS(func, cubictcp_init)
+-BTF_ID_FLAGS(func, cubictcp_recalc_ssthresh)
+-BTF_ID_FLAGS(func, cubictcp_cong_avoid)
+-BTF_ID_FLAGS(func, cubictcp_state)
+-BTF_ID_FLAGS(func, cubictcp_cwnd_event)
+-BTF_ID_FLAGS(func, cubictcp_acked)
+-BTF_KFUNCS_END(tcp_cubic_check_kfunc_ids)
++/* BTF_KFUNCS_START(tcp_cubic_check_kfunc_ids) */
++/* BTF_ID_FLAGS(func, cubictcp_init) */
++/* BTF_ID_FLAGS(func, cubictcp_recalc_ssthresh) */
++/* BTF_ID_FLAGS(func, cubictcp_cong_avoid) */
++/* BTF_ID_FLAGS(func, cubictcp_state) */
++/* BTF_ID_FLAGS(func, cubictcp_cwnd_event) */
++/* BTF_ID_FLAGS(func, cubictcp_acked) */
++/* BTF_KFUNCS_END(tcp_cubic_check_kfunc_ids) */
+ 
+-static const struct btf_kfunc_id_set tcp_cubic_kfunc_set = {
+-	.owner = THIS_MODULE,
+-	.set   = &tcp_cubic_check_kfunc_ids,
+-};
++/* static const struct btf_kfunc_id_set tcp_cubic_kfunc_set = { */
++/* 	.owner = THIS_MODULE, */
++/* 	.set   = &tcp_cubic_check_kfunc_ids, */
++/* }; */
+ 
+ static int __init cubichystartpp_register(void)
+ {
+-	int ret;
+-
+ 	BUILD_BUG_ON(sizeof(struct bictcp) > ICSK_CA_PRIV_SIZE);
+ 
+ 	/* Precompute a bunch of the scaling factors that are used per-packet
+@@ -729,9 +727,9 @@ static int __init cubichystartpp_register(void)
+ 	/* divide by bic_scale and by constant Srtt (100ms) */
+ 	do_div(cube_factor, bic_scale * 10);
+ 
+-	ret = register_btf_kfunc_id_set(BPF_PROG_TYPE_STRUCT_OPS, &tcp_cubic_kfunc_set);
+-	if (ret < 0)
+-		return ret;
++	/* ret = register_btf_kfunc_id_set(BPF_PROG_TYPE_STRUCT_OPS, &tcp_cubic_kfunc_set); */
++	/* if (ret < 0) */
++	/* 	return ret; */
+ 	return tcp_register_congestion_control(&cubichystartpp);
+ }
+ 
+-- 
+2.54.0
+

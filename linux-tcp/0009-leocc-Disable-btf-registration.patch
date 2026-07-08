@@ -1,0 +1,36 @@
+From 658d7bba077594eb895f061ec22a1a2227aad973 Mon Sep 17 00:00:00 2001
+From: Hendrik Cech <hendrik.cech@gmail.com>
+Date: Wed, 10 Dec 2025 10:21:35 +0100
+Subject: [PATCH 09/12] leocc: Disable btf registration
+
+Error on boot causing module not to be loaded
+---
+ net/ipv4/tcp_leocc.c | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/net/ipv4/tcp_leocc.c b/net/ipv4/tcp_leocc.c
+index 030abc49e186..0b24ebf72786 100644
+--- a/net/ipv4/tcp_leocc.c
++++ b/net/ipv4/tcp_leocc.c
+@@ -846,13 +846,14 @@ static const struct btf_kfunc_id_set leocc_kfunc_set = {
+ 
+ static int __init leocc_register(void)
+ {
+-	int ret;
++	// int ret;
+ 
+ 	BUILD_BUG_ON(sizeof(struct leocc) > ICSK_CA_PRIV_SIZE);
+ 
+-	ret = register_btf_kfunc_id_set(BPF_PROG_TYPE_STRUCT_OPS, &leocc_kfunc_set);
+-	if (ret < 0)
+-		return ret;
++	// Disabled: fails for some reason
++	// ret = register_btf_kfunc_id_set(BPF_PROG_TYPE_STRUCT_OPS, &leocc_kfunc_set);
++	// if (ret < 0)
++	// 	return ret;
+ 
+ 	if (leocc_netlink_init() != 0) {
+ 		printk(KERN_ERR "Failed to initialize Netlink for LEOCC.\n");
+-- 
+2.54.0
+
