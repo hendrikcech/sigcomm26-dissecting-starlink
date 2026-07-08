@@ -40,3 +40,11 @@ If you use this repository or dataset in your research, please cite our paper:
 ```
 
 </details>
+
+## Satellite Tracking
+In our paper, we analyze Starlink reconfigurations to distinguish between events that result in a satellite handoff and those that maintain the same satellite connection.
+
+To infer our dish's satellite assignment, we applied the methodology introduced by Ahangarpour et al. (LEO-NET'24, *"Trajectory-based Serving Satellite Identification with User Terminal's Field-of-View"*).
+We adapted their original codebase and enhanced the data processing pipeline for our specific analysis.
+
+The modified code and complete instructions for data collection and processing are available in the [hendrikcech/SatInView](https://github.com/hendrikcech/SatInView) repository.
