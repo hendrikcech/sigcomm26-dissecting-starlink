@@ -4,7 +4,7 @@ This directory contains a sequence of git patches generated on top of the `bbrv3
 These patches add the following TCP congestion controllers and slow start algorithms:
 
 * BBRv1 and BBRv3 (already provided by the base repository)
-* [LeoCC](https://github.com/SpaceNetLab/LeoCC)
+* [LeoCC](https://github.com/SpaceNetLab/LeoCC): please see [hendrikcech/LeoCC](https://github.com/hendrikcech/LeoCC/blob/main/leocc/live_network/README.md) for additional instructions
 * [SatPipe](https://github.com/dzhao99/SatPipe)
 * [HyStart++](https://github.com/SUSSdeveloper/HyStartPP)
 * [SUSS](https://github.com/SUSSdeveloper/SUSSprg)

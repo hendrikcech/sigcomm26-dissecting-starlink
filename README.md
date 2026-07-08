@@ -51,3 +51,6 @@ The modified code and complete instructions for data collection and processing a
 Our study includes a performance measurement of different TCP congestion control algorithms (CCAs) over Starlink.
 To conduct these tests, we created a custom Linux kernel incorporating several CCAs and slow-start algorithms.
 Instructions for rebuilding this kernel are available in [./linux-tcp](linux-tcp/).
+
+Evaluating LeoCC requires additional setup steps.
+We publish and document our changes in [hendrikcech/LeoCC](https://github.com/hendrikcech/LeoCC/tree/main/leocc/live_network).
