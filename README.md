@@ -4,7 +4,7 @@ This repository contains the scripts and references accompanying the SIGCOMM'26 
 
 > **Measurement Tool** -- [NetScalpel](https://github.com/hendrikcech/NetScalpel), the custom network measurement tool used for all experiments in this paper.
 >
-> **Dataset** -- [mediaTUM](https://doi.org/10.14459/2026mp1856124), the complete measurement dataset analyzed in the paper.
+> **Dataset** -- [mediaTUM](https://doi.org/10.14459/2026mp1856124), the complete measurement dataset analyzed in the paper (available starting at Aug 25 2026).
 
 If you use this repository or dataset in your research, please cite our paper:
 
