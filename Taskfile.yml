@@ -155,14 +155,14 @@ tasks:
     desc: "Generate Figure 9 (rateri)."
     cmds:
       - task: check-vars
-      - python3 figures/fig-09-rateri.py --sats '{{.DATASET}}/tle_2026-02-02.csv' -o '{{.RESULTS}}/fig-09-rateri.pdf' -- '{{.DATASET}}'/rate/*/rate_{ul,dl}.csv
+      - python3 figures/fig-09-rateri.py --sats '{{.DATASET}}/sats_2026-02-02/sats.csv' -o '{{.RESULTS}}/fig-09-rateri.pdf' -- '{{.DATASET}}'/rate/*/rate_{ul,dl}.csv
 
   # Confirmed to work
   fig-09-rate:
     desc: "Generate Figure 9 (rate)."
     cmds:
       - task: check-vars
-      - python3 figures/fig-09-rate.py --sats '{{.DATASET}}/tle_2026-02-02.csv' -o '{{.RESULTS}}/fig-09-rate.pdf' -- '{{.DATASET}}'/rate/*/rate_{ul,dl}.csv
+      - python3 figures/fig-09-rate.py --sats '{{.DATASET}}/sats_2026-02-02/sats.csv' -o '{{.RESULTS}}/fig-09-rate.pdf' -- '{{.DATASET}}'/rate/*/rate_{ul,dl}.csv
 
   # Confirmed to work: check again
   fig-10-15:
@@ -232,7 +232,7 @@ tasks:
     desc: "Generate Figure 18 (OWD)."
     cmds:
       - task: check-vars
-      - python3 figures/fig-18-owd.py --sats '{{.DATASET}}/tle_2026-01-11.csv' -o '{{.RESULTS}}/fig-18-owd-udp.pdf' -- '{{.DATASET}}'/owd/*/owd-udp_{ul,dl}.csv
+      - python3 figures/fig-18-owd.py --sats '{{.DATASET}}/sats_2026-01-11/sats.csv' -o '{{.RESULTS}}/fig-18-owd-udp.pdf' -- '{{.DATASET}}'/owd/*/owd-udp_{ul,dl}.csv
 
   # TODO: compare output with paper
   # not in the paper or is it?
@@ -259,14 +259,14 @@ tasks:
   # cdsf: 960
   # rate: 78
 
-  # Confirmed to work
+  # Confirmed to work)
   fig-10-15-vic:
     desc: "Generate Figure 10 and 15."
     cmds:
       - task: check-vars
-      - python3 figures/fig-10-15-mouseeleph.py '{{.DATASET}}'/vic/*mouseeleph*/*csv -o '{{.RESULTS}}/fig-10-15-mouseeleph-vic.pdf'
+      - python3 figures/fig-10-15-mouseeleph.py plot '{{.DATASET}}'/vic/*mouseeleph*/*csv -o '{{.RESULTS}}/fig-10-15-mouseeleph-vic.pdf'
 
-  # Broken: KeyError: 'ho' jlines 269 -> 209 -> 77
+  # TODO Broken: KeyError: 'ho' jlines 269 -> 209 -> 77
   fig-09-rateri-vic:
     desc: "Generate Figure 9 (rateri)."
     cmds:

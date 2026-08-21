@@ -95,8 +95,11 @@ def plot(directions, column, ylabel, df, df_idx, xlabel="Receive Time [ms]", yma
     # Aggregate: TODO plot median?
     for ho in [True, False]:
         for direction in directions:
-            data = df.loc[ho, direction]
-            if column is not None: # None if the columns are already "mmean", "ci_low", etc.
+            try:
+                data = df.loc[ho, direction]
+            except:
+                continue # [ho, direction] not present in data
+            if column is not None: # None if the columns are already "mean", "ci_low", etc.
                 data = data[column]
             if data.empty:
                 continue
@@ -199,6 +202,7 @@ def main():
         dfq = merge_with_sats(dfq, sat_df)
     else:
         df["ho"] = True
+        dfq["ho"] = True
 
     if args.b:
         breakpoint()

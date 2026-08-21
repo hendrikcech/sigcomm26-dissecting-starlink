@@ -168,13 +168,30 @@ CCA_COLORS = {
     "udp": "black",
 }
 
-def plot_on_ax(ax, grp):
-    """Plot CCA lines with confidence bands onto an existing axes. Returns line artists."""
+# Incremental CCA groups for the extra combined pages appended to the PDF back.
+# (title, list of CCA keys); each group builds on the previous one.
+CCA_GROUPS = [
+    ("UDP-only", ["udp"]),
+    ("Bad Slow Start", ["udp", "cubic", "hystartpp", "suss"]),
+    ("Middle Slow Start", ["udp", "cubic", "hystartpp", "suss", "search", "illinois", "cubic-nohy"]),
+    ("Loss-based", ["udp", "cubic-nohy", "illinois"]),
+    ("Model-based", ["udp", "bbr1", "bbr3", "leocc", "satpipe"]),
+    ("CCA-Only", ["udp", "bbr1", "bbr3", "leocc", "satpipe", "illinois", "cubic-nohy"]),
+    # "all" is default figure 1
+]
+
+def plot_on_ax(ax, grp, ccas=None):
+    """Plot CCA lines with confidence bands onto an existing axes. Returns line artists.
+
+    If ccas is given, only those CCAs are plotted (order still from CCA_LINESTYLES).
+    """
     parts = []
     for cca in grp.index.levels[0]:
         if cca not in CCA_LINESTYLES:
             print(f"WARNING: CCA {cca} in grp but not in CCA_LINESTYLES")
     for i, cca in enumerate(CCA_LINESTYLES.keys()): # control the order of lines
+        if ccas is not None and cca not in ccas:
+            continue
         color = CCA_COLORS[cca]
         try:
             data = grp.loc[cca]
@@ -227,8 +244,11 @@ def plot_rtt(grp):
 
     return fig
 
-def plot_combined(gput, grp_queue):
-    """2x2 figure: top=receive rate, bottom=queue size, left=DL, right=UL."""
+def plot_combined(gput, grp_queue, ccas=None):
+    """2x2 figure: top=receive rate, bottom=queue size, left=DL, right=UL.
+
+    If ccas is given, only those CCAs are plotted.
+    """
     fig, axes = plt.subplots(2, 2, figsize=(utils.FULL_WIDTH, FIGSIZE[1] * 2 + 0.3),
                              layout="constrained")
 
@@ -236,14 +256,14 @@ def plot_combined(gput, grp_queue):
     has_ul_queue = grp_queue is not None and "ul" in grp_queue.index.levels[0]
 
     # Top-left: DL receive rate
-    plot_on_ax(axes[0, 0], gput.loc["dl"])
+    plot_on_ax(axes[0, 0], gput.loc["dl"], ccas=ccas)
     axes[0, 0].set_ylabel("Receive Rate [Mbps]")
     axes[0, 0].set_ylim(0, 400)
     # axes[0, 0].set_title("Downlink")
 
     # Top-right: UL receive rate
     if has_ul_gput:
-        plot_on_ax(axes[0, 1], gput.loc["ul"])
+        plot_on_ax(axes[0, 1], gput.loc["ul"], ccas=ccas)
         axes[0, 1].set_ylim(0, 80)
     else:
         axes[0, 1].set_visible(False)
@@ -251,7 +271,8 @@ def plot_combined(gput, grp_queue):
 
     # Bottom-left: DL queue size
     if grp_queue is not None:
-        plot_on_ax(axes[1, 0], grp_queue.loc["dl"])
+        plot_on_ax(axes[1, 0], grp_queue.loc["dl"], ccas=ccas)
+        axes[1, 0].set_ylim(0, 1050)
     else:
         axes[1, 0].set_visible(False)
     axes[1, 0].set_ylabel("Queue Size [Packets]")
@@ -259,7 +280,8 @@ def plot_combined(gput, grp_queue):
 
     # Bottom-right: UL queue size
     if has_ul_queue:
-        plot_on_ax(axes[1, 1], grp_queue.loc["ul"])
+        plot_on_ax(axes[1, 1], grp_queue.loc["ul"], ccas=ccas)
+        axes[1, 1].set_ylim(0, 340)
     else:
         axes[1, 1].set_visible(False)
     axes[1, 1].set_xlabel("Time [ms]")
@@ -376,6 +398,7 @@ def main():
     # Combined 2x2 figure — inserted after legend so it becomes page 2
     fig_combined = plot_combined(gput, grp_queue)
     figs.insert(1, fig_combined)
+    combined_figs = [fig_combined] # all figures that get the combined-page treatment
 
     # gput_ul = pd.concat([grp_udp.loc["ul"]["gput"], grp_tcp.loc["ul"]["gput"]])
     if "ul" in gput.index.levels[0]:
@@ -391,6 +414,12 @@ def main():
     figs.append(plot_rtt(grp_tcp.loc["dl"]["RTT"]))
     if "ul" in grp_tcp.index.levels[0]:
         figs.append(plot_rtt(grp_tcp.loc["ul"]["RTT"]))
+
+    # Extra combined pages with only certain CCA groups, appended to the back.
+    for title, ccas in CCA_GROUPS:
+        fig_grp = plot_combined(gput, grp_queue, ccas=ccas)
+        combined_figs.append(fig_grp)
+        figs.append(fig_grp)
 
     for fig in figs:
         try:
@@ -410,7 +439,7 @@ def main():
     if args.o:
         with PdfPages(args.o) as pdf:
             for i, fig in enumerate(figs):
-                if fig is fig_combined:
+                if fig in combined_figs:
                     for ax in fig.get_axes():
                         ax.set_xlim(-6000, 6000)
                         annotate_phases(ax)
