@@ -33,6 +33,47 @@ tasks:
 
   # --- Figures ---
 
+  plot-all:
+    desc: "Plot all paper figures and results."
+    cmds:
+      - task: aqm-input
+      - task: aqm-input-satpipe
+      - task: fig-02
+      - task: fig-03
+      - task: fig-04
+      - task: fig-05
+      - task: fig-06
+      - task: fig-07-14
+      - task: fig-08
+      - task: fig-09-rate
+      - task: fig-09-rateri
+      - task: fig-10-15
+      - task: fig-10-15-stat
+      - task: fig-11
+      - task: fig-12
+      - task: fig-13
+      - task: fig-16
+      - task: fig-18-owd
+      - task: fig-18-idle
+      - task: tcp-metrics
+      - task: tcp-metrics-jan
+      - task: tcp-stat
+      - task: tcp-stat-jan
+
+  plot-other:
+    desc: "Plot the figures with data captured at other VPs."
+    cmds:
+      - task: fig-02-wat
+      - task: fig-03-vic
+      - task: fig-05-wat
+      - task: fig-06-vic
+      - task: fig-08-wat
+      - task: fig-09-rate-vic
+      - task: fig-09-rateri-vic
+      - task: fig-10-15-vic
+      - task: fig-18-idle-wat
+      - task: fig-18-owd-wat
+
   fig-02:
     desc: "Generate Figure 2."
     cmds:
