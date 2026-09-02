@@ -142,7 +142,11 @@ def plot_ri_break_cdf(df):
     ax.set_xlabel("Connection Break [ms]")
     for ho in [True, False]:
         for direction in grp.index.get_level_values(1).unique():
-            data = grp.loc[ho, direction]
+            try:
+                data = grp.loc[ho, direction]
+            except KeyError:
+                # No data for handover-happened direction combinations
+                continue
             color = utils.direction_color(direction)
             # utils.plot_cdf_fixed(ax, data, color=color,
             #                      ls=HO_LINESTYLES[ho], lw=HO_LINEWIDTH[ho],
