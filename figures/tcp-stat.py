@@ -418,6 +418,7 @@ def main():
     parser = argparse.ArgumentParser(description="Mann-Whitney U test for pairwise TCP CCA goodput comparison")
     parser.add_argument("csvs", nargs="+", help="TCP csv files")
     parser.add_argument("-o", help="Output text file for results")
+    parser.add_argument("-n", type=int, help="sample N runs")
     parser.add_argument("-p", "--pdf", help="Plot PDF with pairwise heatmap matrices")
     parser.add_argument("--show-delta", action="store_true",
                         help="Show Cliff's δ values inside heatmap cells (default: only stars)")
@@ -442,7 +443,7 @@ def main():
 
     print(f"Parsing {len(tcp_files)} TCP files …")
     tcp_args = list(zip(tcp_files, range(len(tcp_files))))
-    df = utils.parse_csvs(tcp_args, parse_tcp_csv, cores=12)
+    df = utils.parse_csvs(tcp_args, parse_tcp_csv, sample=args.n)
 
     if df is None or len(df) == 0:
         print("No data after parsing.", file=sys.stderr)

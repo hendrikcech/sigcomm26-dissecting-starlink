@@ -425,7 +425,8 @@ def group_files(csvs, len_grp=2):
 
 def parse_csvs(map_args, parse_fn, parallel=True, concat=True, cores=multiprocessing.cpu_count(), sample=None):
     warnings.filterwarnings("error")
-    map_args = random.sample(map_args, sample) if sample is not None else map_args
+    # always sample the same subset
+    map_args = random.Random(42).sample(map_args, sample) if sample and len(map_args) > sample is not None else map_args
     if len(map_args) == 0:
         return None
     if parallel:
@@ -527,7 +528,7 @@ def plot_ri_change_with_handovers(df, column, xlabel, xmajorticks=None, xminorti
         plot_cdf(ax, data[~data.handover][column], color=color, linestyle="dashed")
     return fig
 
-# --- Estimate queue size from netmeas run ---
+# --- Estimate queue size from netscalpel run ---
 # Requires numba dependency
 def simulate_queue(df, max_queue=None, return_parts=False, ts_sent="ts_sent", ts_rcvd="ts_rcvd", tail_drop=False):
     df = df.copy()

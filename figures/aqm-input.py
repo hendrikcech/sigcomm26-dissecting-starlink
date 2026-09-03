@@ -20,7 +20,7 @@ import numpy as np
 
 import utils
 
-# --- Step 1: Netmeas Processing
+# --- Step 1: NetScalpel Processing
 def parse_csv(args, freq_ms=1*1.33):
     path, idx = args
     csv_df = utils.parse_udp_csv(path)
@@ -88,7 +88,8 @@ def parse_csv(args, freq_ms=1*1.33):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("csvs", nargs="+", help="netmeas link log files")
+    parser.add_argument("csvs", nargs="+", help="netscalpel link log files")
+    parser.add_argument("-n", type=int, help="sample N runs")
     parser.add_argument("-o", help="Write data to parquet file")
     parser.add_argument("-b", action="store_true")
     args = parser.parse_args()
@@ -99,7 +100,7 @@ def main():
         return
 
     parse_args = list(zip(args.csvs, range(len(args.csvs))))
-    df = utils.parse_csvs(parse_args, parse_csv, parallel=True)
+    df = utils.parse_csvs(parse_args, parse_csv, parallel=True, sample=args.n)
     dfi = df.reset_index()#.set_index(["direction", "duration", "rate", "idx", "ts_s"])
 
     df_args = pd.DataFrame(parse_args, columns=["path", "idx"]).set_index("idx")

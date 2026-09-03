@@ -122,10 +122,10 @@ def loss_rate(df):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("ul_head", help="netmeas csv from UL head drop emulation")
-    parser.add_argument("ul_tail", help="netmeas csv from UL tail drop emulation")
-    parser.add_argument("dl_head", help="netmeas csv from DL head drop emulation")
-    parser.add_argument("dl_tail", help="netmeas csv from DL tail drop emulation")
+    parser.add_argument("ul_head", help="NetScalpel csv from UL head drop emulation")
+    parser.add_argument("ul_tail", help="NetScalpel csv from UL tail drop emulation")
+    parser.add_argument("dl_head", help="NetScalpel csv from DL head drop emulation")
+    parser.add_argument("dl_tail", help="NetScalpel csv from DL tail drop emulation")
     parser.add_argument("pickle", help="Lines from headdrop.py")
     # parser.add_argument("--direction", choices=["ul", "dl"], required=True)
     parser.add_argument("-b", action="store_true")

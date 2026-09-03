@@ -198,7 +198,7 @@ def main():
     parser.add_argument("csvs", nargs="+", help="Burst measure csvs")
     parser.add_argument("--sats", nargs="+", help="Paths to csv file of connected satellites")
     parser.add_argument("--ts-key", default="ts_rcvd")
-    parser.add_argument("-n", type=int)
+    parser.add_argument("-n", type=int, help="sample N runs")
     parser.add_argument("-b", action="store_true")
     parser.add_argument("-o")
     args = parser.parse_args()

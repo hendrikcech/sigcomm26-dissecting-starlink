@@ -346,6 +346,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("csvs", nargs="+", help="Burst measure csvs")
     parser.add_argument("-b", action="store_true")
+    parser.add_argument("-n", type=int, help="sample N runs")
     parser.add_argument("-o")
     args = parser.parse_args()
 
@@ -355,13 +356,13 @@ def main():
     udp_files = [f for f in files if f is not None and f["protocol"] == "udp"]
 
     tcp_args = list(zip(tcp_files, range(len(tcp_files))))
-    df_tcp = utils.parse_csvs(tcp_args, parse_tcp_csv, cores=12)
+    df_tcp = utils.parse_csvs(tcp_args, parse_tcp_csv, sample=args.n)
 
     packet_args = list(zip(packet_files, range(len(packet_files))))
-    df_queue = utils.parse_csvs(packet_args, process_tcp_packets, cores=12) if len(packet_args) > 0 else None
+    df_queue = utils.parse_csvs(packet_args, process_tcp_packets, sample=args.n) if len(packet_args) > 0 else None
 
     udp_args = list(zip(udp_files, range(len(udp_files))))
-    df_udp = utils.parse_csvs(udp_args, parse_udp_csv, cores=12) if len(udp_args) > 0 else None
+    df_udp = utils.parse_csvs(udp_args, parse_udp_csv, sample=args.n) if len(udp_args) > 0 else None
 
     print(f"Grouping tcp")
     grp_tcp = group_tcp_df(df_tcp)

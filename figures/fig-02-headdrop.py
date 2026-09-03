@@ -291,6 +291,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("csvs", nargs="+", help="Burst measure csvs")
     parser.add_argument("--pickle", help="Export plotted lines")
+    parser.add_argument("-n", type=int, help="sample N runs")
     parser.add_argument("-b", action="store_true")
     parser.add_argument("-o")
     args = parser.parse_args()
@@ -303,7 +304,7 @@ def main():
     FIGSIZE = (utils.FULL_WIDTH/3, 1.25)
 
     map_args = list(zip(args.csvs, range(len(args.csvs))))
-    results = utils.parse_csvs(map_args, parse_csv, concat=False)
+    results = utils.parse_csvs(map_args, parse_csv, concat=False, sample=args.n)
     if results is None:
         return
     df = pd.concat(df for df, _ in results if df is not None)

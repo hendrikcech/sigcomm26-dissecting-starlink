@@ -148,13 +148,10 @@ index_cols_phases = ["direction", "phase", "cca", "duration_ms", "group", "idx"]
 
 def main():
     parser = argparse.ArgumentParser()
-    # parser.add_argument("csvs", nargs="+", help="TCP csvs")
-    # parser.add_argument("-a", nargs="+", help="TCP csvs of group A")
-    # parser.add_argument("-b", nargs="+", help="TCP csvs of group B")
     parser.add_argument("-g", "--group", action="append", nargs="+", 
                         help="Group name followed by its CSVs. e.g., -g A file1.csv file2.csv")
+    parser.add_argument("-n", type=int, help="sample N runs")
     parser.add_argument("-b", action="store_true")
-    # parser.add_argument("--ccas", nargs="*", help="Filter specific CCAs")
     parser.add_argument("-o")
     args = parser.parse_args()
 
@@ -166,7 +163,7 @@ def main():
         group_name = group[0]
         group_files = group[1:]
         map_args += list(zip(group_files, range(len(group_files)), [group_name] * len(group_files)))
-    df = utils.parse_csvs(map_args, parse_csv)
+    df = utils.parse_csvs(map_args, parse_csv, sample=args.n)
 
     if df is None:
         return

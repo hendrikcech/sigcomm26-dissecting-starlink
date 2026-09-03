@@ -13,6 +13,7 @@
 import argparse
 import os
 import multiprocessing
+import random
 
 import numpy as np
 import pandas as pd
@@ -149,13 +150,15 @@ def main():
     # Expects DL and UL csvs
     parser.add_argument("csvs", nargs="+")
     parser.add_argument("--sats", help="Path to csv file of connected satellites")
+    parser.add_argument("-n", type=int, help="sample N runs")
     parser.add_argument("-b", action="store_true")
     parser.add_argument("-o")
     args = parser.parse_args()
 
     utils.set_plt_style()
 
-    df = parse_csvs(args.csvs)
+    csvs = random.Random(42).sample(args.csvs, args.n) if args.n else args.csvs
+    df = parse_csvs(csvs)
     grp = group_df(df)
 
     if args.sats is not None:

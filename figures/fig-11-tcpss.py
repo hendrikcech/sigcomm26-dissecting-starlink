@@ -12,7 +12,7 @@
 # ///
 
 import argparse
-import os
+import random
 import multiprocessing
 
 import numpy as np
@@ -180,6 +180,7 @@ FIGSIZE=(utils.COLUMN_WIDTH/1.8, 1.5)
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("csvs", nargs="+", help="Burst measure csvs")
+    parser.add_argument("-n", type=int, help="sample N runs")
     parser.add_argument("-b", action="store_true")
     parser.add_argument("-o")
     args = parser.parse_args()
@@ -188,6 +189,7 @@ def main():
 
     files = [tcpri.parse_filename(csv) for csv in sorted(args.csvs)]
     tcp_files = [f for f in files if f is not None and f["protocol"] == "tcp"]
+    tcp_files = random.Random(42).sample(tcp_files, args.n) if args.n else tcp_files
 
     with multiprocessing.Pool(multiprocessing.cpu_count()) as pool:
         tcp_args = list(zip(tcp_files, range(len(tcp_files))))
