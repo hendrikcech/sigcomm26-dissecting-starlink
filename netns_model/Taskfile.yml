@@ -2,9 +2,11 @@
 version: '3'
 
 vars:
-  NETMEAS: netmeas
-  NETMEAS_PLOT: ../netmeas_plot.py
+  NETSCALPEL: scalpel-run
+  NETSCALPEL_PLOT: ../netscalpel_plot.py
   RESULTS: results
+  USER:
+    sh: whoami
 
 tasks:
   setup:
@@ -13,19 +15,19 @@ tasks:
   teardown:
     - sudo bash ./netns_model.sh teardown
 
-  netmeas-plot:
+  netscalpel-plot:
     requires:
       vars: [NAME]
     vars:
       QUEUE: '{{if .NOT_QUEUE}}{{else}}--queue "{{.NAME}}.queue.csv"{{end}}'
     dir: '{{.RESULTS}}'
     cmds:
-      - python3 '{{.NETMEAS_PLOT}}' '{{.NAME}}.csv' {{.QUEUE}} -o "{{.NAME}}.pdf"
+      - python3 '{{.NETSCALPEL_PLOT}}' '{{.NAME}}.csv' {{.QUEUE}} -o "{{.NAME}}.pdf"
 
-  netmeas-server:
+  netscalpel-server:
     dir: '{{.RESULTS}}'
     cmds:
-      - sudo nice '-10' ip netns exec h2 sudo -u $USER timeout 6 '{{.NETMEAS}}' server >/dev/null 2>&1 </dev/null &
+      - sudo nice '-10' ip netns exec h2 sudo -u '{{.USER}}' timeout 6 '{{.NETSCALPEL}}' server >/dev/null 2>&1 </dev/null &
 
   monitor-queue:
     help: |
@@ -52,10 +54,12 @@ tasks:
   # --- Compare head-drop and tail-drop ---
 
   drop-all:
-    - task: head-drop-ul
-    - task: head-drop-dl
-    - task: tail-drop-ul
-    - task: tail-drop-dl
+    desc: Run all head-drop and tail-drop tests.
+    cmds:
+      - task: head-drop-ul
+      - task: head-drop-dl
+      - task: tail-drop-ul
+      - task: tail-drop-dl
 
   where-drop:
     internal: true
@@ -69,10 +73,10 @@ tasks:
         vars: { QDISC: '{{.QDISC}}' }
       - task: monitor-queue
         vars: { LOG: '{{.NAME}}.queue.csv', HANDLE: '{{.HANDLE}}' }
-      - task: netmeas-server
+      - task: netscalpel-server
       - sleep 1
-      - sudo ip netns exec h1 nice '-10' sudo -u $USER '{{.NETMEAS}}' udp-rate --ip 10.0.3.2 --rate='{{.RATE}}' --duration='{{.DURATION}}' --direction='{{.DIRECTION}}' --out='{{.NAME}}.csv'
-      - task: netmeas-plot
+      - sudo ip netns exec h1 nice '-10' sudo -u '{{.USER}}' '{{.NETSCALPEL}}' udp-rate --ip 10.0.3.2 --rate='{{.RATE}}' --duration='{{.DURATION}}' --direction='{{.DIRECTION}}' --out='{{.NAME}}.csv'
+      - task: netscalpel-plot
         vars: { NAME: '{{.NAME}}' }
   head-drop-ul:
     - task: where-drop
@@ -110,10 +114,10 @@ tasks:
         vars: { QDISC: 'pfifo_head_drop', POP: 'true' }
       - task: monitor-queue
         vars: { LOG: '{{.NAME}}.queue.csv', HANDLE: '30000' }
-      - task: netmeas-server
+      - task: netscalpel-server
       - sleep 1
-      - sudo ip netns exec h1 '{{.NETMEAS}}' udp-rate --ip 10.0.3.2 --rate='{{.RATE}}' --duration=3000 --direction='dl' --out='{{.NAME}}.csv'
-      - task: netmeas-plot
+      - sudo ip netns exec h1 '{{.NETSCALPEL}}' udp-rate --ip 10.0.3.2 --rate='{{.RATE}}' --duration=3000 --direction='dl' --out='{{.NAME}}.csv'
+      - task: netscalpel-plot
         vars: { NAME: '{{.NAME}}' }
 
   pop-700:
@@ -141,14 +145,14 @@ tasks:
         vars: { QDISC: 'pfifo_head_drop', POP: 'false' }
       - task: monitor-queue
         vars: { LOG: '{{.NAME}}.queue.csv', HANDLE: '20000' } # TODO: downlink specific
-      - task: netmeas-server
+      - task: netscalpel-server
       - task: tcpdump:h1
       - task: tcpdump:h2
       - sleep 1
-      - sudo ip netns exec h1 '{{.NETMEAS}}' tcp --ip 10.0.3.2 --duration=3000 --direction='{{.DIRECTION}}' --cca='{{.CCA}}' --out='{{.NAME}}.csv' | tee tmp.stdout
+      - sudo ip netns exec h1 '{{.NETSCALPEL}}' tcp --ip 10.0.3.2 --duration=3000 --direction='{{.DIRECTION}}' --cca='{{.CCA}}' --out='{{.NAME}}.csv' | tee tmp.stdout
       # TODO: assumes downlink test
       - pcap-match h2.pcap h1.pcap --name "{{.NAME}}-match" --tcp-src "$(grep sendTCP tmp.stdout | grep DL | cut -f 4 | cut -d ':' -f 2)"
-      - uv run '{{.NETMEAS_PLOT}}' '{{.NAME}}'-match*.csv --queue '{{.NAME}}.queue.csv' -o "{{.NAME}}.pdf"
+      - uv run '{{.NETSCALPEL_PLOT}}' '{{.NAME}}'-match*.csv --queue '{{.NAME}}.queue.csv' -o "{{.NAME}}.pdf"
 
   tcp-cubic:
     - task: tcp-task
@@ -174,15 +178,15 @@ tasks:
         vars: { LOG: '{{.NAME}}_a.queue.csv', HANDLE: '20000' }
       - task: monitor-queue
         vars: { LOG: '{{.NAME}}_b.queue.csv', HANDLE: '20000' }
-      - task: netmeas-server
+      - task: netscalpel-server
       - task: tcpdump:h1
       - task: tcpdump:h2
       - sleep 1
-      - sudo ip netns exec h1 '{{.NETMEAS}}' udp-rate --ip 10.0.3.2 --rate='{{.ELEPH_RATE}}' --duration=3000 --direction='{{.DIRECTION}}' --out='{{.NAME}}_a.csv' &
-      - sudo ip netns exec h1 '{{.NETMEAS}}' udp-rate --ip 10.0.3.2 --rate='{{.MOUSE_RATE}}' --duration=3000 --direction='{{.DIRECTION}}' --out='{{.NAME}}_b.csv'
-      - task: netmeas-plot
+      - sudo ip netns exec h1 '{{.NETSCALPEL}}' udp-rate --ip 10.0.3.2 --rate='{{.ELEPH_RATE}}' --duration=3000 --direction='{{.DIRECTION}}' --out='{{.NAME}}_a.csv' &
+      - sudo ip netns exec h1 '{{.NETSCALPEL}}' udp-rate --ip 10.0.3.2 --rate='{{.MOUSE_RATE}}' --duration=3000 --direction='{{.DIRECTION}}' --out='{{.NAME}}_b.csv'
+      - task: netscalpel-plot
         vars: { NAME: '{{.NAME}}_a', NOT_QUEUE: true }
-      - task: netmeas-plot
+      - task: netscalpel-plot
         vars: { NAME: '{{.NAME}}_b', NOT_QUEUE: true }
 
   fq:

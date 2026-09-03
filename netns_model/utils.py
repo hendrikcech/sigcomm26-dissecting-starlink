@@ -524,7 +524,7 @@ def plot_ri_change_with_handovers(df, column, xlabel, xmajorticks=None, xminorti
         plot_cdf(ax, data[~data.handover][column], color=color, linestyle="dashed")
     return fig
 
-# --- Estimate queue size from netmeas run ---
+# --- Estimate queue size from NetScalpel run ---
 # Requires numba dependency
 def simulate_queue(df, max_queue=None, return_parts=False, ts_sent="ts_sent", ts_rcvd="ts_rcvd", tail_drop=False):
     df = df.copy()

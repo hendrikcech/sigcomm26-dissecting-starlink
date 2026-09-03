@@ -212,7 +212,7 @@ def analyze(data):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("csvs", nargs="+", help="netmeas csvs")
+    parser.add_argument("csvs", nargs="+", help="NetScalpel csvs")
     parser.add_argument("--freq-ms", default=5*1.33, type=float)
     parser.add_argument("--min-size", default=1200, type=int, help="Only consider packets larger than min-size")
     parser.add_argument("--offset-ms", default=0.0, type=float)
