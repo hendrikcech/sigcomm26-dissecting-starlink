@@ -38,50 +38,64 @@ netns_model/   Network namespace model for queue validation experiments (Fig. 4)
 linux-tcp/     Kernel patches for additional TCP CCAs and slow-start algorithms
 ```
 
-## Dataset Access
+## Dataset
 The dataset is hosted on [mediaTUM](https://doi.org/10.14459/2026mp1856124) and can be downloaded in whole or in part using `rsync`.
+The full dataset has a size of 456 GB.
+The plotting scripts, however, **only require the csv files from the dataset**.
+Cloning only the csv files reduces the download to 173 GB (see the last example below).
 
 ```bash
 # List the contents of the dataset
 $ rsync rsync://m1856124@dataserv.ub.tum.de/m1856124/
-dr-xr-xr-x              0 2026/08/26 10:56:11 .
--r-xr-xr-x     41.218.442 2026/08/26 10:17:11 Checksums.sha512
-dr-xr-xr-x              0 2026/08/26 10:11:48 burst
-dr-xr-xr-x              0 2026/02/01 16:36:01 cooldown_highrate
-dr-xr-xr-x              0 2026/02/02 11:34:20 cooldown_lowrate
-dr-xr-xr-x              0 2026/08/26 10:12:01 mouseeleph_dl_250
-dr-xr-xr-x              0 2026/08/26 10:12:12 mouseeleph_ul
-dr-xr-xr-x              0 2026/08/26 10:12:56 multidurrate_1s
-dr-xr-xr-x              0 2026/08/26 10:13:09 multidurrate_4s
-dr-xr-xr-x              0 2026/06/11 15:54:26 netns
-dr-xr-xr-x              0 2026/02/09 11:37:32 owd
-dr-xr-xr-x              0 2026/02/02 22:06:31 rate
-dr-xr-xr-x              0 2026/07/08 18:50:25 sats_2026-01-11
-dr-xr-xr-x              0 2026/07/08 18:50:35 sats_2026-02-02
-dr-xr-xr-x              0 2026/08/26 10:14:29 switchflow
-dr-xr-xr-x              0 2026/08/25 19:47:29 tcp-satpipe
-dr-xr-xr-x              0 2026/08/26 10:16:15 tcp
-dr-xr-xr-x              0 2026/02/06 00:28:49 vic
-dr-xr-xr-x              0 2026/06/29 16:45:20 wat
 
 # Download a specific subset (e.g., the netns results)
 $ rsync -Pr rsync://m1856124@dataserv.ub.tum.de/m1856124/netns .
-receiving incremental file list
-created directory /tmp/netns
-netns/
-netns/head-drop-dl.csv
-      4.576.220 100%   10,99MB/s    0:00:00 (xfr#1, to-chk=3/5)
-netns/head-drop-ul.csv
-      1.407.222 100%    2,66MB/s    0:00:00 (xfr#2, to-chk=2/5)
-netns/tail-drop-dl.csv
-      4.572.961 100%    4,80MB/s    0:00:00 (xfr#3, to-chk=1/5)
-netns/tail-drop-ul.csv
-      1.409.070 100%    1,40MB/s    0:00:00 (xfr#4, to-chk=0/5)
+
+# Only download csv files (sufficient for all plotting tasks)
+$ rsync -Pr rsync://m1856124@dataserv.ub.tum.de/m1856124/ . --include='*/' --include='*.csv' --exclude='*'
 ```
+
+### Dataset Folders
+
+The folders contain data from our vantage point (VP) in Munich, Germany, if not otherwise noted.
+
+| Folder | Full Size | CSV-only Size | Tasks | Description |
+|--------|-----------|---------------|-------|-------------|
+| `burst` | 1.7 GB | 660 MB | `fig-03` | Burst-size probing experiments |
+| `cooldown_highrate` | 59 GB | 19 GB | `fig-06` | Cooldown experiments with high send rates (UL=140, DL=500 Mbps) |
+| `cooldown_lowrate` | 38 GB | 12 GB | `fig-16` | Cooldown experiments with lower send rates (UL=70, DL=300 Mbps) |
+| `mouseeleph_dl_250` | 9.5 GB | 3.0 GB | `fig-10-15`, `fig-10-15-stat` | Mouse/elephant fair-queuing experiments, downlink data |
+| `mouseeleph_ul` | 7.7 GB | 2.2 GB | `fig-10-15`, `fig-10-15-stat` | Mouse/elephant fair-queuing experiments, uplink data |
+| `multidurrate_1s` | 26 GB | 8.4 GB | `fig-02` | Multi-duration/rate experiments with 1 s duration |
+| `multidurrate_4s` | 41 GB | 14 GB | `fig-05`, `fig-08`, `aqm-input`, `aqm-input-satpipe` | Multi-duration/rate experiments with 4 s duration |
+| `netns` | 12 MB | 12 MB | `fig-04` | Head-drop vs. tail-drop comparison from `netns_model/` experiments |
+| `owd` | 4.0 GB | 2.5 GB | `fig-18-owd`, `fig-18-idle` | One-way delay measurements |
+| `rate` | 18 GB | 18 GB | `fig-09-rate`, `fig-09-rateri` | Sustained send-rate experiments |
+| `sats_2026-01-11` | 46 MB | 9.3 MB | `fig-18-owd` | Satellite identification data from 2026-01-11 |
+| `sats_2026-02-02` | 44 MB | 8.9 MB | `fig-09-rate`, `fig-09-rateri` | Satellite identification data from 2026-02-02 |
+| `switchflow` | 2.0 GB | 632 MB | `fig-13` | Flow-switching experiments |
+| `tcp` | 54 GB | 19 GB | `aqm-input`, `tcp-stat-jan`, `tcp-metrics-jan` | TCP CCA performance experiments |
+| `tcp-satpipe` | 56 GB | 20 GB | `aqm-input-satpipe`, `fig-11`, `fig-12`, `tcp-stat`, `tcp-metrics` | TCP CCA performance experiments including SatPipe CCA |
+| `vic` | 39 GB | 24 GB | `fig-03-vic`, `fig-06-vic`, `fig-09-rate-vic`, `fig-09-rateri-vic`, `fig-10-15-vic` | Measurement data from our VP in Victoria, Canada |
+| `wat` | 104 GB | 34 GB | `fig-02-wat`, `fig-05-wat`, `fig-08-wat`, `fig-18-owd-wat`, `fig-18-idle-wat` | Measurement data from our VP in Waterloo, Canada |
+| Sum | 456 GB | 173 GB | |
+
+### Experiment Data
+
+All experiments were conducted with [NetScalpel](https://github.com/hendrikcech/NetScalpel).
+Each experiment run is stored in its own folder.
+For example, `20260203T031812_multidurrate_dl` in `multidurrate_4s/` was created by the `multidurrate` experiment running in the downlink (DL) direction on 2026-02-03 at 03:18:12 UTC.
+The experiment folders contain the following types of files:
+- `info.txt`: Lists information about each measurement that was run as part of the experiment, including the measurement's output file.
+- `*.csv`, e.g., `owd-udp_dl_050_4000.csv`: Per-packet information. The filename encodes the measurement parameters.
+- `stltrace_client.log` and `stltrace_server.log`: NetScalpel client and server output.
+- `tcpdump_local.pcap.zst` and `tcpdump_remote.pcap.zst`: Packet captures from client and server, compressed with Zstandard.
 
 ## Prerequisites and Setup
 
-The environment dependencies are managed with Nix. Use `nix develop` to enter an interactive shell, or `nix develop -c <CMD>` to run a one-off command.
+The environment dependencies are managed with Nix.
+Use `nix develop` to enter an interactive shell, or `nix develop -c <CMD>` to run a one-off command. 
+On first run, `nix` will fetch all required dependenices which might take a while (typically 5-15 minutes).
 
 To replot the figures, you need the measurement dataset on your local disk. Configure the local paths by creating a `.env` file in the root directory:
 
@@ -95,9 +109,11 @@ SAMPLE=
 
 ## System Requirements
 
-The plotting scripts typically parse input files generated by [NetScalpel](https://github.com/hendrikcech/NetScalpel) in parallel on all available CPU cores.
+The plotting scripts typically parse csv files generated by [NetScalpel](https://github.com/hendrikcech/NetScalpel) in parallel on all available CPU cores.
+Consider only downloading these files to reduce space demand.
 The peak memory usage typically stays below 6 GB, but certain scripts require up to 80 GB of memory (e.g., `task fig-12`).
-Please see `resource_usage.md` for typical task durations and memory usage patterns (our system had 32 CPU cores).
+
+Please see the "Resource Usage" table blelow for typical task durations and memory usage patterns.
 To reduce the runtime and peak memory usage at the expense of result accuracy, set `SAMPLE` to any value in `.env`, e.g., `SAMPLE=t` (Note: defining `SAMPLE` with any value, even `false` or `0`, enables sampling).
 
 ## Usage
@@ -152,6 +168,47 @@ To process new TCP measurements with (pcap-match)[https://github.com/hendrikcech
 task process-tcp:<DIR>   Process NetScalpel TCP measurements with pcap-match
 ```
 
+### Resource Usage
+
+The following table lists execution times and peak memory demand on our 32-core machine to give a rough idea of each script's demand.
+The last two columns address the `SAMPLE` mode.
+
+| Task | Execution Time (minutes) | Peak Memory | Execution Time (minutes, sampled) | Peak Memory (sampled) |
+|---|---|---|---|---|
+| `task tcp-stat` | 0:26.43 | 5.1 GB | 0:18.27 | 2.8 GB |
+| `task tcp-stat-jan` | 0:44.39 | 4.8 GB | 0:16.46 | 2.8 GB |
+| `task tcp-metrics` | 0:57.95 | 6.2 GB | 0:27.74 | 3.3 GB |
+| `task tcp-metrics-jan` | 0:57.56 | 5.8 GB | 1:22.27 | 3.4 GB |
+| `task fig-18-owd` | 4:19.14 | 5.1 GB | 2:09.36 | 2.1 GB |
+| `task fig-18-owd-wat` | 0:59.84 | 1.3 GB | 0:59.87 | 1.3 GB |
+| `task fig-18-idle-wat` | 0:08.30 | 1.1 GB | 0:05.49 | 1.1 GB |
+| `task fig-18-idle` | 0:20.12 | 3.8 GB | 0:19.95 | 3.5 GB |
+| `task fig-13` | 0:38.41 | 2.8 GB | 0:21.36 | 2.8 GB |
+| `task fig-12` | 18:28.82 | 73.7 GB | 1:59.82 | 5.6 GB |
+| `task fig-11` | 0:53.24 | 5.5 GB | 0:22.93 | 3.0 GB |
+| `task fig-10-15-vic` | 0:51.86 | 0.3 GB | 0:54.94 | 0.3 GB |
+| `task fig-10-15` | 1:22.79 | 0.3 GB | 1:14.41 | 0.3 GB |
+| `task fig-10-15-stat` | 0:56.48 | 0.2 GB | 0:56.44 | 0.2 GB |
+| `task fig-09-rate-vic` | 4:18.19 | 28.2 GB | 1:25.53 | 7.8 GB |
+| `task fig-09-rateri-vic` | 2:35.11 | 7.8 GB | 0:51.29 | 2.3 GB |
+| `task fig-09-rateri` | 4:51.22 | 14.8 GB | 0:35.78 | 1.2 GB |
+| `task fig-09-rate` | 13:02.82 | 62.9 GB | 0:37.88 | 3.7 GB |
+| `task fig-08-wat` | 0:33.43 | 7.0 GB | 0:11.97 | 2.4 GB |
+| `task fig-08` | 1:37.66 | 14.8 GB | 0:28.25 | 4.2 GB |
+| `task fig-16` | 3:00.00 | 0.2 GB | 2:35.29 | 0.2 GB |
+| `task fig-07-14` | 0:31.50 | 9.7 GB | 0:23.65 | 5.1 GB |
+| `task fig-06-vic` | 2:08.17 | 0.2 GB | 2:01.35 | 0.2 GB |
+| `task fig-05-wat` | 2:15.77 | 19.3 GB | 0:19.69 | 3.1 GB |
+| `task fig-04` | 0:05.90 | 0.2 GB | 0:05.79 | 0.2 GB |
+| `task fig-05` | 1:58.57 | 12.4 GB | 0:39.24 | 3.6 GB |
+| `task fig-06` | 3:22.29 | 0.2 GB | 3:16.83 | 0.2 GB |
+| `task fig-03` | 0:36.52 | 3.8 GB | 0:24.96 | 3.8 GB |
+| `task fig-03-vic` | 0:13.35 | 1.4 GB | 0:10.85 | 1.4 GB |
+| `task fig-02` | 3:47.51 | 5.0 GB | 3:12.29 | 4.0 GB |
+| `task fig-02-wat` | 13:03.67 | 16.7 GB | 2:52.92 | 3.7 GB |
+| `task aqm-input-satpipe` | 4:24.53 | 6.3 GB | 1:34.57 | 4.1 GB |
+| `task aqm-input` | 4:58.93 | 6.3 GB | 2:03.07 | 4.0 GB |
+
 
 ## Satellite Tracking
 
@@ -160,7 +217,7 @@ In our paper, we analyze Starlink reconfigurations to distinguish between events
 To infer our dish's satellite assignment, we applied the methodology introduced by Ahangarpour et al. (LEO-NET'24, *"Trajectory-based Serving Satellite Identification with User Terminal's Field-of-View"*).
 We adapted their original codebase and enhanced the data processing pipeline for our specific analysis.
 
-The modified code and complete instructions for data collection and processing are available in the [hendrikcech/SatInView](https://github.com/hendrikcech/SatInView) repository.
+The modified code and complete instructions for data collection and processing are available in the [hendrikcech/SatInView](https://github.com/hendrikcech/SatInView#measure-and-process-obstruction-data) repository.
 
 
 ## Evaluating TCP Performance
