@@ -34,7 +34,7 @@ index 99d5bcd780bf..de41ee7bac14 100644
 +++ b/net/ipv4/Makefile
 @@ -53,6 +53,7 @@ obj-$(CONFIG_TCP_CONG_SUSS) += tcp_cubic_suss.o
  obj-$(CONFIG_TCP_CONG_SEARCH) += tcp_cubic_search.o
- obj-$(CONFIG_TCP_CONG_SEARCH) += tcp_cubic_hystartpp.o
+ obj-$(CONFIG_TCP_CONG_HYSTARTPP) += tcp_cubic_hystartpp.o
  obj-$(CONFIG_TCP_CONG_LEOCC) += tcp_leocc.o
 +obj-$(CONFIG_TCP_CONG_SATPIPE) += tcp_satpipe.o
  obj-$(CONFIG_TCP_CONG_DCTCP) += tcp_dctcp.o

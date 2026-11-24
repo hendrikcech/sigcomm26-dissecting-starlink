@@ -36,7 +36,7 @@ index 62ddcdccefba..e6c94303dbb4 100644
  obj-$(CONFIG_TCP_CONG_CUBIC) += tcp_cubic.o
  obj-$(CONFIG_TCP_CONG_SUSS) += tcp_cubic_suss.o
  obj-$(CONFIG_TCP_CONG_SEARCH) += tcp_cubic_search.o
-+obj-$(CONFIG_TCP_CONG_SEARCH) += tcp_cubic_hystartpp.o
++obj-$(CONFIG_TCP_CONG_HYSTARTPP) += tcp_cubic_hystartpp.o
  obj-$(CONFIG_TCP_CONG_DCTCP) += tcp_dctcp.o
  obj-$(CONFIG_TCP_CONG_WESTWOOD) += tcp_westwood.o
  obj-$(CONFIG_TCP_CONG_HSTCP) += tcp_highspeed.o
