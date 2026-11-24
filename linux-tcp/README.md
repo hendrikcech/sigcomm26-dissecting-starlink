@@ -12,10 +12,11 @@ These patches add the following TCP congestion controllers and slow start algori
 
 ## Prerequisites
 
-Clone the [Google BBR](https://github.com/google/bbr) repository and checkout the tag these these patches were generated from to avoid merge conflicts. You may add `--depth 1` to speed up the cloning process.
+Clone the [Google BBR](https://github.com/google/bbr) repository at the tag these patches were generated from to avoid merge conflicts. You may add `--depth 1` to speed up the cloning process.
 
 ```bash
-git clone --branch bbrv3-2025-03-18 git@github.com:google/bbr.git linux
+git clone --branch bbrv3-2025-03-18 https://github.com/google/bbr.git linux
+cd linux
 ```
 
 ## How to Apply the Patches
@@ -30,7 +31,34 @@ git am /path/to/patches/*.patch
 
 Git will process the `.patch` files in alphabetical/numerical order (e.g., `0001-...`, `0002-...`) and apply them cleanly.
 
-### Troubleshooting Conflicts
+## Configure and Build
+
+From the kernel source directory, start with a default configuration and open the configuration menu:
+
+```bash
+make defconfig
+make menuconfig
+```
+
+To build for the current machine instead, you can use the running kernel's configuration as a starting point (if your distribution provides it):
+
+```bash
+cp "/boot/config-$(uname -r)" .config
+make olddefconfig
+make menuconfig
+```
+
+`olddefconfig` updates the configuration for this kernel, using defaults for new options. Review the result, especially drivers and distribution-specific settings, before installing or booting it.
+
+Under **Networking support → Networking options → TCP: advanced congestion control**, enable the desired congestion controllers, including LeoCC, SatPipe, HyStart++, SUSS, and SEARCH. Select `M` to build them as modules or `Y` to build them into the kernel. Save the configuration and build the kernel and modules:
+
+```bash
+make -j"$(nproc)"
+```
+
+The default configuration may not include all drivers needed by your machine. Adjust it before installing or booting the kernel. Building requires the usual Linux kernel build dependencies, including a compiler, make, and development libraries for `menuconfig`.
+
+## Troubleshooting Patch Conflicts
 
 If any patch fails to apply cleanly (usually because your base code differs from what the patches expect), `git am` will pause.
 1. Run `git status` to see which files have conflicts.
