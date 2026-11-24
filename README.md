@@ -231,3 +231,6 @@ Instructions for rebuilding this kernel are available in [./linux-tcp](linux-tcp
 
 Evaluating LeoCC requires additional setup steps.
 We publish and document our changes in [hendrikcech/LeoCC](https://github.com/hendrikcech/LeoCC/tree/main/leocc/live_network).
+
+## License
+MIT
