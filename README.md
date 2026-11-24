@@ -117,7 +117,7 @@ Consider only downloading these files to reduce space demand.
 The peak memory usage typically stays below 6 GB, but certain scripts require up to 80 GB of memory (e.g., `task fig-12`).
 
 Please see the "Resource Usage" table below for typical task durations and memory usage patterns.
-To reduce the runtime and peak memory usage at the expense of result accuracy, set `SAMPLE` to any value in `.env`, e.g., `SAMPLE=t` (Note: defining `SAMPLE` with any value, even `false` or `0`, enables sampling).
+To reduce the runtime and peak memory usage at the expense of result accuracy, set `SAMPLE=true` in `.env`. Sampling is disabled when `SAMPLE` is unset, empty, or `false`; other values produce a warning and leave sampling disabled.
 
 ## Usage
 

@@ -16,6 +16,7 @@ tasks:
       - sh: test -d '{{.DATASET}}'
         msg: 'DATASET folder "{{.DATASET}}" does not exist'
     cmds:
+      - '{{if and .SAMPLE (ne .SAMPLE "true") (ne .SAMPLE "false")}}echo "Warning: SAMPLE must be true or false; sampling is disabled." >&2{{else}}:{{end}}'
       - mkdir -p '{{.RESULTS}}'
     silent: true
 
@@ -79,7 +80,7 @@ tasks:
     cmds:
       - task: check-vars
       # headdrop.pickle is needed by netns-drop figure
-      - python3 figures/fig-02-headdrop.py '{{.DATASET}}'/multidurrate_1s/*multidurrate*/rate_{dl_500,ul_140}_1000.csv --pickle '{{.RESULTS}}/headdrop.pickle' -o '{{.RESULTS}}/fig-02.pdf' {{if .SAMPLE}}-n 150{{end}}
+      - python3 figures/fig-02-headdrop.py '{{.DATASET}}'/multidurrate_1s/*multidurrate*/rate_{dl_500,ul_140}_1000.csv --pickle '{{.RESULTS}}/headdrop.pickle' -o '{{.RESULTS}}/fig-02.pdf' {{if eq .SAMPLE "true"}}-n 150{{end}}
 
   fig-03:
     desc: "Generate Figure 3."
@@ -100,7 +101,7 @@ tasks:
     desc: "Generate Figure 5."
     cmds:
       - task: check-vars
-      - python3 figures/fig-05-08-rampup.py  '{{.DATASET}}'/multidurrate_4s/*/rate_*{050,100,dl_200,300,400,dl_500,015,030,050,070,090,140}_*.csv -o '{{.RESULTS}}/fig-05-rampup.pdf' {{if .SAMPLE}}-n 500{{end}}
+      - python3 figures/fig-05-08-rampup.py  '{{.DATASET}}'/multidurrate_4s/*/rate_*{050,100,dl_200,300,400,dl_500,015,030,050,070,090,140}_*.csv -o '{{.RESULTS}}/fig-05-rampup.pdf' {{if eq .SAMPLE "true"}}-n 500{{end}}
 
   fig-06:
     desc: "Generate Figure 6."
@@ -127,31 +128,31 @@ tasks:
     desc: "Generate data for fig-07-aqm"
     cmds:
       - task: check-vars
-      - python3 figures/aqm-input.py -o '{{.RESULTS}}'/aqm-input.parquet {{if .SAMPLE}}-n 2000{{end}} '{{.DATASET}}'/multidurrate_4s/*/rate*_4000.csv '{{.DATASET}}'/tcp/*/tcp*packets.csv
+      - python3 figures/aqm-input.py -o '{{.RESULTS}}'/aqm-input.parquet {{if eq .SAMPLE "true"}}-n 2000{{end}} '{{.DATASET}}'/multidurrate_4s/*/rate*_4000.csv '{{.DATASET}}'/tcp/*/tcp*packets.csv
 
   aqm-input-satpipe:
     desc: "Generate data for fig-07-aqm with the tcp-satpipe data"
     cmds:
       - task: check-vars
-      - python3 figures/aqm-input.py -o '{{.RESULTS}}'/aqm-input-satpipe.parquet {{if .SAMPLE}}-n 2000{{end}} '{{.DATASET}}'/multidurrate_4s/*/rate*_4000.csv '{{.DATASET}}'/tcp-satpipe/*/tcp*packets.csv
+      - python3 figures/aqm-input.py -o '{{.RESULTS}}'/aqm-input-satpipe.parquet {{if eq .SAMPLE "true"}}-n 2000{{end}} '{{.DATASET}}'/multidurrate_4s/*/rate*_4000.csv '{{.DATASET}}'/tcp-satpipe/*/tcp*packets.csv
     
   fig-08:
     desc: "Generate Figure 8."
     cmds:
       - task: check-vars
-      - python3 figures/fig-05-08-rampup.py --xlim 1200 '{{.DATASET}}'/multidurrate_4s/*/rate_dl_{500,600,700}_*.csv -o '{{.RESULTS}}/fig-08-rampup-outlier.pdf' {{if .SAMPLE}}-n 100{{end}}
+      - python3 figures/fig-05-08-rampup.py --xlim 1200 '{{.DATASET}}'/multidurrate_4s/*/rate_dl_{500,600,700}_*.csv -o '{{.RESULTS}}/fig-08-rampup-outlier.pdf' {{if eq .SAMPLE "true"}}-n 100{{end}}
 
   fig-09-rateri:
     desc: "Generate Figure 9 (rateri)."
     cmds:
       - task: check-vars
-      - python3 figures/fig-09-rateri.py --sats '{{.DATASET}}/sats_2026-02-02/sats.csv' -o '{{.RESULTS}}/fig-09-rateri.pdf' {{if .SAMPLE}}-n 10{{end}} -- '{{.DATASET}}'/rate/*/rate_{ul,dl}.csv
+      - python3 figures/fig-09-rateri.py --sats '{{.DATASET}}/sats_2026-02-02/sats.csv' -o '{{.RESULTS}}/fig-09-rateri.pdf' {{if eq .SAMPLE "true"}}-n 10{{end}} -- '{{.DATASET}}'/rate/*/rate_{ul,dl}.csv
 
   fig-09-rate:
     desc: "Generate Figure 9 (rate)."
     cmds:
       - task: check-vars
-      - python3 figures/fig-09-rate.py --sats '{{.DATASET}}/sats_2026-02-02/sats.csv' -o '{{.RESULTS}}/fig-09-rate.pdf' {{if .SAMPLE}}-n 10{{end}} -- '{{.DATASET}}'/rate/*/rate_{ul,dl}.csv
+      - python3 figures/fig-09-rate.py --sats '{{.DATASET}}/sats_2026-02-02/sats.csv' -o '{{.RESULTS}}/fig-09-rate.pdf' {{if eq .SAMPLE "true"}}-n 10{{end}} -- '{{.DATASET}}'/rate/*/rate_{ul,dl}.csv
 
   fig-10-15:
     desc: "Generate Figure 10 and 15."
@@ -169,35 +170,35 @@ tasks:
     desc: "Generate Figure 11."
     cmds:
       - task: check-vars
-      - python3 figures/fig-11-tcpss.py '{{.DATASET}}'/tcp-satpipe/*/tcp_{dl,ul}_*_12000.csv -o '{{.RESULTS}}/fig-11-tcpss.pdf' {{if .SAMPLE}}-n 1000{{end}}
+      - python3 figures/fig-11-tcpss.py '{{.DATASET}}'/tcp-satpipe/*/tcp_{dl,ul}_*_12000.csv -o '{{.RESULTS}}/fig-11-tcpss.pdf' {{if eq .SAMPLE "true"}}-n 1000{{end}}
 
   fig-12:
     desc: "Generate Figure 12."
     cmds:
       - task: check-vars
-      - python3 figures/fig-12-tcpri.py '{{.DATASET}}'/tcp-satpipe/*/{tcp,udp}_{dl,ul}_*_12000.*csv -o '{{.RESULTS}}/fig-12-tcpri.pdf' {{if .SAMPLE}}-n 50{{end}}
+      - python3 figures/fig-12-tcpri.py '{{.DATASET}}'/tcp-satpipe/*/{tcp,udp}_{dl,ul}_*_12000.*csv -o '{{.RESULTS}}/fig-12-tcpri.pdf' {{if eq .SAMPLE "true"}}-n 50{{end}}
 
   tcp-stat:
     desc: "Run TCP significance tests"
     cmds:
       - task: check-vars
-      - python3 figures/tcp-stat.py '{{.DATASET}}'/tcp-satpipe/*/{tcp,udp}_{dl,ul}_*_12000.csv -o '{{.RESULTS}}/tcp-stat.txt' -p '{{.RESULTS}}/tcp-stat.pdf' {{if .SAMPLE}}-n 1000{{end}}
+      - python3 figures/tcp-stat.py '{{.DATASET}}'/tcp-satpipe/*/{tcp,udp}_{dl,ul}_*_12000.csv -o '{{.RESULTS}}/tcp-stat.txt' -p '{{.RESULTS}}/tcp-stat.pdf' {{if eq .SAMPLE "true"}}-n 1000{{end}}
   tcp-stat-jan:
     desc: "Run TCP significance tests"
     cmds:
       - task: check-vars
-      - python3 figures/tcp-stat.py '{{.DATASET}}'/tcp/*/{tcp,udp}_{dl,ul}_*_12000.csv -o '{{.RESULTS}}/tcp-stat-jan.txt' -p '{{.RESULTS}}/tcp-stat-jan.pdf' {{if .SAMPLE}}-n 1000{{end}}
+      - python3 figures/tcp-stat.py '{{.DATASET}}'/tcp/*/{tcp,udp}_{dl,ul}_*_12000.csv -o '{{.RESULTS}}/tcp-stat-jan.txt' -p '{{.RESULTS}}/tcp-stat-jan.pdf' {{if eq .SAMPLE "true"}}-n 1000{{end}}
 
   tcp-metrics:
     desc: "Gather TCP metrics"
     cmds:
       - task: check-vars
-      - python3 figures/tcp-metrics.py -g tcp '{{.DATASET}}'/tcp-satpipe/*/tcp_{dl,ul}_*_12000.csv -o '{{.RESULTS}}/tcp-metrics.txt' {{if .SAMPLE}}-n 1000{{end}}
+      - python3 figures/tcp-metrics.py -g tcp '{{.DATASET}}'/tcp-satpipe/*/tcp_{dl,ul}_*_12000.csv -o '{{.RESULTS}}/tcp-metrics.txt' {{if eq .SAMPLE "true"}}-n 1000{{end}}
   tcp-metrics-jan:
     desc: "Gather TCP metrics"
     cmds:
       - task: check-vars
-      - python3 figures/tcp-metrics.py -g tcp '{{.DATASET}}'/tcp/*/tcp_{dl,ul}_*_12000.csv -o '{{.RESULTS}}/tcp-metrics-jan.txt' {{if .SAMPLE}}-n 1000{{end}}
+      - python3 figures/tcp-metrics.py -g tcp '{{.DATASET}}'/tcp/*/tcp_{dl,ul}_*_12000.csv -o '{{.RESULTS}}/tcp-metrics-jan.txt' {{if eq .SAMPLE "true"}}-n 1000{{end}}
     
   fig-13:
     desc: "Generate Figure 13."
@@ -209,7 +210,7 @@ tasks:
     desc: "Generate Figure 18 (OWD)."
     cmds:
       - task: check-vars
-      - python3 figures/fig-18-owd.py --sats '{{.DATASET}}/sats_2026-01-11/sats.csv' -o '{{.RESULTS}}/fig-18-owd-udp.pdf' {{if .SAMPLE}}-n 100{{end}} -- '{{.DATASET}}'/owd/*/owd-udp_{ul,dl}.csv
+      - python3 figures/fig-18-owd.py --sats '{{.DATASET}}/sats_2026-01-11/sats.csv' -o '{{.RESULTS}}/fig-18-owd-udp.pdf' {{if eq .SAMPLE "true"}}-n 100{{end}} -- '{{.DATASET}}'/owd/*/owd-udp_{ul,dl}.csv
 
   fig-18-idle:
     desc: "Generate Figure 18 (idle)."
@@ -232,13 +233,13 @@ tasks:
     desc: "Generate Figure 9 (rateri)."
     cmds:
       - task: check-vars
-      - python3 figures/fig-09-rateri.py -o '{{.RESULTS}}/fig-09-rateri-vic.pdf' {{if .SAMPLE}}-n 20{{end}} -- '{{.DATASET}}'/vic/*_rate_*/rate_{ul,dl}.csv
+      - python3 figures/fig-09-rateri.py -o '{{.RESULTS}}/fig-09-rateri-vic.pdf' {{if eq .SAMPLE "true"}}-n 20{{end}} -- '{{.DATASET}}'/vic/*_rate_*/rate_{ul,dl}.csv
 
   fig-09-rate-vic:
     desc: "Generate Figure 9 (rate)."
     cmds:
       - task: check-vars
-      - python3 figures/fig-09-rate.py -o '{{.RESULTS}}/fig-09-rate-vic.pdf' {{if .SAMPLE}}-n 20{{end}} -- '{{.DATASET}}'/vic/*_rate_*/rate_{ul,dl}.csv
+      - python3 figures/fig-09-rate.py -o '{{.RESULTS}}/fig-09-rate-vic.pdf' {{if eq .SAMPLE "true"}}-n 20{{end}} -- '{{.DATASET}}'/vic/*_rate_*/rate_{ul,dl}.csv
 
   fig-03-vic:
     desc: "Generate Figure 3."
@@ -258,19 +259,19 @@ tasks:
     cmds:
       - task: check-vars
       # headdrop.pickle is needed by netns-drop figure
-      - python3 figures/fig-02-headdrop.py '{{.DATASET}}'/wat/multidurrate/*multidurrate*/rate_{dl_500,ul_140}_1000.csv --pickle '{{.RESULTS}}/headdrop_wat.pickle' -o '{{.RESULTS}}/fig-02-wat.pdf' {{if .SAMPLE}}-n 150{{end}}
+      - python3 figures/fig-02-headdrop.py '{{.DATASET}}'/wat/multidurrate/*multidurrate*/rate_{dl_500,ul_140}_1000.csv --pickle '{{.RESULTS}}/headdrop_wat.pickle' -o '{{.RESULTS}}/fig-02-wat.pdf' {{if eq .SAMPLE "true"}}-n 150{{end}}
 
   fig-05-wat:
     desc: "Generate Figure 5."
     cmds:
       - task: check-vars
-      - python3 figures/fig-05-08-rampup.py  '{{.DATASET}}'/wat/multidurrate/*/rate_*_1500.csv -o '{{.RESULTS}}/fig-05-rampup-wat.pdf' {{if .SAMPLE}}-n 500{{end}}
+      - python3 figures/fig-05-08-rampup.py  '{{.DATASET}}'/wat/multidurrate/*/rate_*_1500.csv -o '{{.RESULTS}}/fig-05-rampup-wat.pdf' {{if eq .SAMPLE "true"}}-n 500{{end}}
   
   fig-08-wat:
     desc: "Generate Figure 8."
     cmds:
       - task: check-vars
-      - python3 figures/fig-05-08-rampup.py  '{{.DATASET}}'/wat/multidurrate/*/rate_dl_{300,500,700}_1500.csv -o '{{.RESULTS}}/fig-08-rampup-outlier-wat.pdf' {{if .SAMPLE}}-n 100{{end}}
+      - python3 figures/fig-05-08-rampup.py  '{{.DATASET}}'/wat/multidurrate/*/rate_dl_{300,500,700}_1500.csv -o '{{.RESULTS}}/fig-08-rampup-outlier-wat.pdf' {{if eq .SAMPLE "true"}}-n 100{{end}}
   
   fig-18-owd-wat:
     desc: "Generate Figure 18 (OWD)."
