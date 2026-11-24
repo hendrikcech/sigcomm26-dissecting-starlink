@@ -127,24 +127,34 @@ The measurements were conducted with [NetScalpel](https://github.com/hendrikcech
 
 To generate individual figures:
 
-```
-task fig-02              Generate Figure 2
-task fig-03              Generate Figure 3
-task fig-04              Generate Figure 4       # depends on: fig-02 (headdrop.pickle)
-task fig-05              Generate Figure 5
-task fig-06              Generate Figure 6
-task fig-07-14           Generate Figures 7 & 14  # depends on: aqm-input
-task fig-08              Generate Figure 8
-task fig-09-rate         Generate Figure 9 (rate)
-task fig-09-rateri       Generate Figure 9 (rateri)
-task fig-10-15           Generate Figures 10 & 15
-task fig-11              Generate Figure 11
-task fig-12              Generate Figure 12
-task fig-13              Generate Figure 13
-task fig-16              Generate Figure 16
-task fig-18-owd          Generate Figure 18 (OWD)
-task fig-18-idle         Generate Figure 18 (idle)
-```
+Pages refer to the task's output PDF, not the paper PDF. Some figures combine pages from multiple PDFs.
+
+| Task                 | Figure   | Output PDF                      | Relevant PDF pages |
+|----------------------|----------|---------------------------------|--------------------|
+| `task fig-02`        | 2        | `fig-02.pdf`                    | 1–3                |
+| `task fig-03`        | 3        | `fig-03-bursts.pdf`             | 1–2                |
+| `task fig-04`        | 4        | `fig-04.pdf`                    | 1                  |
+| `task fig-05`        | 5        | `fig-05-rampup.pdf`             | 1                  |
+| `task fig-06`        | 6 (plot) | `fig-06-cooldown.pdf`           | 1                  |
+| `task fig-07-14`     | 7        | `fig-07-14-aqm.pdf`             | 1, 2, 4, 5         |
+| `task fig-07-14`     | 14       | `fig-07-14-aqm.pdf`             | 1, 3, 4, 6         |
+| `task fig-08`        | 8        | `fig-08-rampup-outlier.pdf`     | 1                  |
+| `task fig-09-rate`   | 9(e)     | `fig-09-rate.pdf`               | 4                  |
+| `task fig-09-rateri` | 9(a)–(d) | `fig-09-rateri.pdf`             | 1, 8, 2, 11        |
+| `task fig-09-rateri` | 17       | `fig-09-rateri.pdf`             | 7                  |
+| `task fig-10-15`     | 10       | `fig-10-15-mouseeleph.pdf`      | 1, 12              |
+| `task fig-10-15`     | 15       | `fig-10-15-mouseeleph.pdf`      | 1, 17, 21          |
+| `task fig-11`        | 11       | `fig-11-tcpss.pdf`              | 1–3                |
+| `task fig-12`        | 12       | `fig-12-tcpri.pdf`              | 1–2                |
+| `task fig-13`        | 13       | `fig-13-switchflow.pdf`         | 1–2                |
+| `task fig-16`        | 16       | `fig-16-cooldown.pdf`           | 1                  |
+| `task fig-18-owd`    | 9(f)     | `fig-18-owd-udp.pdf`            | 2                  |
+| `task fig-18-owd`    | 18(a)    | `fig-18-owd-udp.pdf`            | 1                  |
+| `task fig-18-idle`   | 18(b)    | `fig-18-loss-idle.pdf`          | 1                  |
+| `task tcp-stat`      | 19       | `tcp-stat.pdf`                  | 1–2                |
+
+`fig-04` runs `fig-02` if `headdrop.pickle` is missing, and `fig-07-14` runs `aqm-input` if `aqm-input.parquet` is missing.
+Figure 6 also includes a separately drawn experiment diagram.
 
 Preprocessing and statistical analysis:
 
